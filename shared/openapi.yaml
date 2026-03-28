@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Splitr API
+  version: 0.1.0
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        service:
+          type: string

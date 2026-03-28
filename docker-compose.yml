@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: splitr-postgres
+    environment:
+      POSTGRES_DB: splitr
+      POSTGRES_USER: splitr
+      POSTGRES_PASSWORD: splitr
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U splitr"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build: ./backend
+    container_name: splitr-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/splitr
+      SPRING_DATASOURCE_USERNAME: splitr
+      SPRING_DATASOURCE_PASSWORD: splitr
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: splitr-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
