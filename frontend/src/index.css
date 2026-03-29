@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Manrope', sans-serif;
+    background-color: #0e1322;
+    color: #dee1f7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: rgba(66, 229, 176, 0.3);
+  }
+}
+
+@layer components {
+  .glass-card {
+    background: rgba(47, 52, 69, 0.4);
+    backdrop-filter: blur(20px);
+  }
+
+  .glass-panel {
+    background: rgba(47, 52, 69, 0.6);
+    backdrop-filter: blur(16px);
+  }
+
+  .emerald-glow {
+    background: radial-gradient(
+      circle at center,
+      rgba(66, 229, 176, 0.15) 0%,
+      transparent 70%
+    );
+  }
+
+  .emerald-shadow {
+    box-shadow: 0 0 40px -10px rgba(66, 229, 176, 0.15);
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
