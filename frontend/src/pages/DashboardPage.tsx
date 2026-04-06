@@ -1,4 +1,5 @@
 import Icon from '../components/Icon'
+import { useAuth } from '../contexts/AuthContext'
 
 const recentActivity = [
   { name: 'Aleksandra', title: 'Dinner at Mamma Mia', icon: 'local_pizza', iconColor: 'text-orange-400', amount: '$42.00', status: 'owed', bg: 'bg-orange-900/30' },
@@ -14,6 +15,8 @@ const groups = [
 ]
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+
   return (
     <div className="p-12 min-h-screen relative overflow-hidden">
       {/* Background glow */}
@@ -24,7 +27,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface mb-2">
-            Good morning, Alex
+            Good morning, {user?.username ?? ''}
           </h2>
           <p className="text-on-surface-variant font-body">
             Here's your financial status for today.

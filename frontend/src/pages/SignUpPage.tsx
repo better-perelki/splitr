@@ -2,13 +2,15 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Icon from '../components/Icon'
+import axios from 'axios'
 
 export default function SignUpPage() {
   const { signup } = useAuth()
   const navigate = useNavigate()
-  const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -19,12 +21,20 @@ export default function SignUpPage() {
       setError('Password must be at least 6 characters.')
       return
     }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
     setLoading(true)
     try {
-      await signup(name, email, password)
+      await signup(username, email, password)
       navigate('/')
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        setError(err.response.data.error)
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -57,8 +67,8 @@ export default function SignUpPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="name" className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
-              Name
+            <label htmlFor="username" className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+              Username
             </label>
             <div className="relative">
               <Icon
@@ -66,13 +76,13 @@ export default function SignUpPage() {
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg"
               />
               <input
-                id="name"
+                id="username"
                 type="text"
                 required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
-                placeholder="Your name"
+                placeholder="Your username"
               />
             </div>
           </div>
@@ -115,6 +125,27 @@ export default function SignUpPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
                 placeholder="Min. 6 characters"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className="block text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Icon
+                name="lock"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg"
+              />
+              <input
+                id="confirmPassword"
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-xl text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors"
+                placeholder="Repeat password"
               />
             </div>
           </div>

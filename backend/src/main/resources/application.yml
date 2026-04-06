@@ -13,9 +13,21 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
 
 springdoc:
   api-docs:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:veryLongSecretKeyForDevelopmentThatIsAtLeast256BitsLong!ChangeInProd}
+    access-token-expiration: 900000
+    refresh-token-expiration: 604800000
+  upload:
+    dir: ${UPLOAD_DIR:./uploads}

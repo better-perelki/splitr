@@ -25,6 +25,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/splitr
       SPRING_DATASOURCE_USERNAME: splitr
       SPRING_DATASOURCE_PASSWORD: splitr
+      JWT_SECRET: veryLongSecretKeyForDevelopmentThatIsAtLeast256BitsLong!ChangeInProd
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -39,3 +43,4 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:

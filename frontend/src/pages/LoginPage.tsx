@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Icon from '../components/Icon'
+import axios from 'axios'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -18,8 +19,12 @@ export default function LoginPage() {
     try {
       await login(email, password)
       navigate('/')
-    } catch {
-      setError('Invalid email or password.')
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        setError(err.response.data.error)
+      } else {
+        setError('Invalid email or password.')
+      }
     } finally {
       setLoading(false)
     }

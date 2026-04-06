@@ -98,3 +98,23 @@ The backend auto-generates the OpenAPI spec from controller annotations via Spri
 | Postgres | 5432 |
 
 Database credentials: `splitr` / `splitr` / `splitr` (db / user / password).
+
+## Environment Variables
+
+### Backend
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SPRING_DATASOURCE_URL` | JDBC connection string | `jdbc:postgresql://localhost:5432/splitr` |
+| `SPRING_DATASOURCE_USERNAME` | Database user | `splitr` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | `splitr` |
+| `JWT_SECRET` | HMAC-SHA256 signing key (min 256 bits) | dev-only key (see `application.yml`) |
+| `UPLOAD_DIR` | Directory for uploaded files (avatars) | `./uploads` |
+
+`JWT_SECRET` **must** be overridden in production with a strong random value. The access token expires in 15 minutes, the refresh token in 7 days (configurable via `app.jwt.access-token-expiration` / `app.jwt.refresh-token-expiration` in ms).
+
+### Frontend
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_API_BASE_URL` | Backend URL (used only in `.env`) | `http://localhost:8080` |

@@ -4,48 +4,90 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
   type ReactNode,
 } from 'react'
+import api, {
+  setTokens,
+  clearTokens,
+  getRefreshToken,
+  setLogoutHandler,
+} from '../api/client'
+
+export interface UserProfile {
+  id: string
+  email: string
+  phone: string | null
+  username: string
+  avatarUrl: string | null
+  defaultCurrency: string
+  timezone: string
+  createdAt: string
+}
 
 interface AuthState {
   isAuthenticated: boolean
-  user: { email: string; name: string } | null
+  user: UserProfile | null
+  loading: boolean
   login: (email: string, password: string) => Promise<void>
-  signup: (name: string, email: string, password: string) => Promise<void>
+  signup: (username: string, email: string, password: string) => Promise<void>
   logout: () => void
+  setUser: (user: UserProfile) => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthState['user']>(() => {
-    const stored = localStorage.getItem('splitr_user')
-    return stored ? JSON.parse(stored) : null
-  })
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const login = useCallback(async (email: string, _password: string) => {
-    const u = { email, name: email.split('@')[0] }
-    localStorage.setItem('splitr_user', JSON.stringify(u))
-    setUser(u)
+  const logout = useCallback(() => {
+    clearTokens()
+    setUser(null)
+  }, [])
+
+  useEffect(() => {
+    setLogoutHandler(logout)
+  }, [logout])
+
+  useEffect(() => {
+    const rt = getRefreshToken()
+    if (rt) {
+      api
+        .post<{ accessToken: string; refreshToken: string; user: UserProfile }>('/auth/refresh-token', { refreshToken: rt })
+        .then(({ data }) => {
+          setTokens(data.accessToken, data.refreshToken)
+          setUser(data.user)
+        })
+        .catch(() => clearTokens())
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
+  const login = useCallback(async (email: string, password: string) => {
+    const { data } = await api.post('/auth/login', { email, password })
+    setTokens(data.accessToken, data.refreshToken)
+    setUser(data.user)
   }, [])
 
   const signup = useCallback(
-    async (name: string, email: string, _password: string) => {
-      const u = { email, name }
-      localStorage.setItem('splitr_user', JSON.stringify(u))
-      setUser(u)
+    async (username: string, email: string, password: string) => {
+      const { data } = await api.post('/auth/register', {
+        username,
+        email,
+        password,
+      })
+      setTokens(data.accessToken, data.refreshToken)
+      setUser(data.user)
     },
     [],
   )
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('splitr_user')
-    setUser(null)
-  }, [])
-
   const value = useMemo(
-    () => ({ isAuthenticated: !!user, user, login, signup, logout }),
-    [user, login, signup, logout],
+    () => ({ isAuthenticated: !!user, user, loading, login, signup, logout, setUser }),
+    [user, loading, login, signup, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

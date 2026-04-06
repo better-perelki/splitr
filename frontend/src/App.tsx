@@ -12,12 +12,14 @@ import ProfilePage from './pages/ProfilePage'
 import PlaceholderPage from './pages/PlaceholderPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
+  if (loading) return null
   return isAuthenticated ? children : <Navigate to="/landing" replace />
 }
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
+  if (loading) return null
   return isAuthenticated ? <Navigate to="/" replace /> : children
 }
 
