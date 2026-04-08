@@ -108,6 +108,21 @@ paths:
       responses:
         "200":
           description: OK
+  /api/friends/request/by-username:
+    post:
+      tags:
+      - Friends
+      summary: Send a friend request using username
+      operationId: sendByUsername
+      parameters:
+      - name: username
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
   /api/auth/register:
     post:
       tags:

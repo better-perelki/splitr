@@ -22,65 +22,73 @@ public class FriendController {
         this.friendService = friendService;
     }
 
-    private UUID getAuthenticatedUserId(Authentication authentication) {
-        return (UUID) authentication.getPrincipal();
-    }
-
     @PostMapping("/request")
     @Operation(summary = "Send a friend request")
     public ResponseEntity<Void> sendRequest(@RequestBody SendFriendRequest request,
-                                            Authentication authentication) {
-        friendService.sendRequest(getAuthenticatedUserId(authentication), request.receiverId());
+                                            Authentication auth) {
+        friendService.sendRequest(userId(auth), request.receiverId());
+        return ResponseEntity.status(201).build();
+    }
+
+    @PostMapping("/request/by-username")
+    @Operation(summary = "Send a friend request using username")
+    public ResponseEntity<Void> sendByUsername(@RequestParam String username,
+                                               Authentication auth) {
+        friendService.sendRequestByUsername(userId(auth), username);
         return ResponseEntity.status(201).build();
     }
 
     @PostMapping("/request/{id}/accept")
     @Operation(summary = "Accept a friend request")
     public ResponseEntity<Void> acceptRequest(@PathVariable UUID id,
-                                              Authentication authentication) {
-        friendService.accept(id, getAuthenticatedUserId(authentication));
+                                              Authentication auth) {
+        friendService.accept(id, userId(auth));
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/request/{id}/decline")
     @Operation(summary = "Decline a friend request")
     public ResponseEntity<Void> declineRequest(@PathVariable UUID id,
-                                               Authentication authentication) {
-        friendService.decline(id, getAuthenticatedUserId(authentication));
+                                               Authentication auth) {
+        friendService.decline(id, userId(auth));
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/request/{id}")
     @Operation(summary = "Cancel sent friend request")
     public ResponseEntity<Void> cancelRequest(@PathVariable UUID id,
-                                              Authentication authentication) {
-        friendService.cancelRequest(id, getAuthenticatedUserId(authentication));
+                                              Authentication auth) {
+        friendService.cancelRequest(id, userId(auth));
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     @Operation(summary = "Get friends list with balances")
-    public ResponseEntity<List<Friendship>> getFriends(Authentication authentication) {
-        return ResponseEntity.ok(friendService.getFriends(getAuthenticatedUserId(authentication)));
+    public ResponseEntity<List<Friendship>> getFriends(Authentication auth) {
+        return ResponseEntity.ok(friendService.getFriends(userId(auth)));
     }
 
     @GetMapping("/pending")
     @Operation(summary = "Get incoming friend requests")
-    public ResponseEntity<List<FriendRequestDetails>> getPending(Authentication authentication) {
-        return ResponseEntity.ok(friendService.getPending(getAuthenticatedUserId(authentication)));
+    public ResponseEntity<List<FriendRequestDetails>> getPending(Authentication auth) {
+        return ResponseEntity.ok(friendService.getPending(userId(auth)));
     }
 
     @GetMapping("/sent")
     @Operation(summary = "Get sent friend requests")
-    public ResponseEntity<List<FriendRequestDetails>> getSent(Authentication authentication) {
-        return ResponseEntity.ok(friendService.getSent(getAuthenticatedUserId(authentication)));
+    public ResponseEntity<List<FriendRequestDetails>> getSent(Authentication auth) {
+        return ResponseEntity.ok(friendService.getSent(userId(auth)));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Remove a friend")
     public ResponseEntity<Void> removeFriend(@PathVariable UUID id,
-                                             Authentication authentication) {
-        friendService.removeFriend(id, getAuthenticatedUserId(authentication));
+                                             Authentication auth) {
+        friendService.removeFriend(id, userId(auth));
         return ResponseEntity.noContent().build();
+    }
+
+    private UUID userId(Authentication auth) {
+        return (UUID) auth.getPrincipal();
     }
 }

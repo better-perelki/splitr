@@ -63,6 +63,24 @@ export class FriendsService {
         });
     }
     /**
+     * Send a friend request using username
+     * @returns any OK
+     * @throws ApiError
+     */
+    public static sendByUsername({
+        username,
+    }: {
+        username: string,
+    }): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/friends/request/by-username',
+            query: {
+                'username': username,
+            },
+        });
+    }
+    /**
      * Get friends list with balances
      * @returns Friendship OK
      * @throws ApiError

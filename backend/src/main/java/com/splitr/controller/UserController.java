@@ -42,6 +42,12 @@ public class UserController {
         return userService.search(query);
     }
 
+    @GetMapping("/all")
+    public List<UserSummary> getAllUsers(Authentication auth) {
+        UUID userId = (UUID) auth.getPrincipal();
+        return userService.getAllUsersExcluding(userId);
+    }
+
     private UUID userId(Authentication auth) {
         return (UUID) auth.getPrincipal();
     }

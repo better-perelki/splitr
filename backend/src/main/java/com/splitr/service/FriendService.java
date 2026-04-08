@@ -101,6 +101,14 @@ public class FriendService {
     }
 
     @Transactional
+    public void sendRequestByUsername(UUID senderId, String username) {
+        User receiver = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Użytkownik " + username + " nie istnieje"));
+
+        sendRequest(senderId, receiver.getId());
+    }
+
+    @Transactional
     public void accept(UUID requestId, UUID userId) {
         var fr = friendRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
