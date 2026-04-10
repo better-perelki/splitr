@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage'
 import SignUpPage from './pages/SignUpPage'
 import DashboardPage from './pages/DashboardPage'
 import GroupDetailPage from './pages/GroupDetailPage'
+import GroupsPage from './pages/GroupsPage'
 import FriendsPage from './pages/FriendsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ProfilePage from './pages/ProfilePage'
@@ -34,7 +35,8 @@ export default function App() {
       {/* Protected routes */}
       <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />
-        <Route path="groups" element={<GroupDetailPage />} />
+        <Route path="groups" element={<GroupsPage />} />
+        <Route path="groups/:id" element={<GroupDetailPage />} />
         <Route path="friends" element={<FriendsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="settings" element={<PlaceholderPage title="Settings" />} />

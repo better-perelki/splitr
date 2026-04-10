@@ -1,6 +1,12 @@
+import { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
 import Icon from '../components/Icon'
+import GroupModal from '../components/GroupModal'
+import { groupsApi, type GroupDetailsResponse, type GroupUpdateRequest, type GroupMemberResponse } from '../api/groups'
 
-const expenses = [
+type TabType = 'expenses' | 'balances' | 'analytics'
+
+const mockExpenses = [
   {
     date: 'Today, Oct 14',
     items: [
@@ -16,12 +22,86 @@ const expenses = [
   },
 ]
 
-const balances = [
+const mockBalances = [
   { from: 'Alex', to: 'Maria', amount: '$45.00' },
   { from: 'Tom', to: 'Alex', amount: '$22.00' },
 ]
 
+const MOCK_GROUP: GroupDetailsResponse = {
+  id: '1',
+  name: 'Tatra Mountains Trip',
+  icon: '🏔️',
+  currency: 'PLN',
+  type: 'TRIP',
+  balance: 38.10,
+  members: [
+    { user: { id: '1', email: 'alex@test.com', phone: null, username: 'Alex', avatarUrl: null }, role: 'ADMIN', joinedAt: '2025-01-01' },
+    { user: { id: '2', email: 'maria@test.com', phone: null, username: 'Maria', avatarUrl: null }, role: 'MEMBER', joinedAt: '2025-01-02' },
+    { user: { id: '3', email: 'tom@test.com', phone: null, username: 'Tom', avatarUrl: null }, role: 'MEMBER', joinedAt: '2025-01-03' },
+  ],
+}
+
 export default function GroupDetailPage() {
+  const { id } = useParams<{ id: string }>()
+  const [group, setGroup] = useState<GroupDetailsResponse | null>(null)
+  const [activeTab, setActiveTab] = useState<TabType>('expenses')
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  const tabs: { key: TabType; label: string }[] = [
+    { key: 'expenses', label: 'Expenses' },
+    { key: 'balances', label: 'Balances' },
+    { key: 'analytics', label: 'Analytics' },
+  ]
+
+  useEffect(() => {
+    if (!id) return
+    setLoading(true)
+    groupsApi.get(id)
+      .then(data => setGroup(data))
+      .catch(() => setGroup(MOCK_GROUP))
+      .finally(() => setLoading(false))
+  }, [id])
+
+  const handleUpdateGroup = async (data: GroupUpdateRequest) => {
+    if (!id || !group) return
+    try {
+      await groupsApi.update(id, data)
+      setGroup({ ...group, ...data })
+    } catch {
+      setGroup({ ...group, ...data })
+    }
+  }
+
+  const handleRemoveMember = async (userId: string) => {
+    if (!id || !group) return
+    try {
+      await groupsApi.removeMember(id, userId)
+    } catch {
+      // continue with local update
+    }
+    setGroup({
+      ...group,
+      members: group.members.filter(m => m.user.id !== userId),
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (!group) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-on-surface-variant">
+        Group not found
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       {/* Hero */}
@@ -32,28 +112,30 @@ export default function GroupDetailPage() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <span className="bg-primary/10 text-primary border border-primary/20 px-3 py-1 rounded-full text-xs font-bold tracking-widest uppercase">
-                Travel
+                {group.type}
               </span>
               <span className="text-on-surface-variant font-headline text-sm tracking-widest uppercase opacity-70">
                 Active Expedition
               </span>
             </div>
             <h1 className="font-headline text-5xl font-bold tracking-tighter text-on-surface mb-4">
-              Tatra Mountains Trip 🏔️
+              {group.icon} {group.name}
             </h1>
             <div className="flex items-center gap-6">
               <div className="flex -space-x-3">
-                {['A', 'M', 'T'].map((letter) => (
+                {group.members.slice(0, 3).map((m: GroupMemberResponse) => (
                   <div
-                    key={letter}
+                    key={m.user.id}
                     className="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant flex items-center justify-center text-xs font-bold text-on-surface-variant"
                   >
-                    {letter}
+                    {m.user.username[0].toUpperCase()}
                   </div>
                 ))}
-                <div className="w-10 h-10 rounded-full border-2 border-surface bg-surface-container-highest flex items-center justify-center text-xs font-bold text-primary">
-                  +2
-                </div>
+                {group.members.length > 3 && (
+                  <div className="w-10 h-10 rounded-full border-2 border-surface bg-surface-container-highest flex items-center justify-center text-xs font-bold text-primary">
+                    +{group.members.length - 3}
+                  </div>
+                )}
               </div>
               <div className="h-8 w-px bg-outline-variant/30" />
               <div className="flex items-baseline gap-2">
@@ -61,15 +143,18 @@ export default function GroupDetailPage() {
                   Group Currency:
                 </span>
                 <span className="font-headline text-lg font-bold text-primary">
-                  PLN
+                  {group.currency}
                 </span>
               </div>
             </div>
           </div>
           <div className="flex gap-4">
-            <button className="bg-surface-container-highest/60 backdrop-blur-xl px-6 py-3 rounded-xl border border-white/5 font-bold hover:bg-surface-container-highest transition-colors flex items-center gap-2">
-              <Icon name="share" />
-              Invite
+            <button
+              onClick={() => setShowEditModal(true)}
+              className="bg-surface-container-highest/60 backdrop-blur-xl px-6 py-3 rounded-xl border border-white/5 font-bold hover:bg-surface-container-highest transition-colors flex items-center gap-2"
+            >
+              <Icon name="edit" />
+              Edit
             </button>
             <button className="bg-primary text-on-primary px-8 py-3 rounded-xl font-bold hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 emerald-shadow">
               <Icon name="add" filled />
@@ -82,17 +167,18 @@ export default function GroupDetailPage() {
       {/* Tab Bar */}
       <div className="px-12 border-b border-outline-variant/10 sticky top-0 bg-surface/80 backdrop-blur-md z-30">
         <div className="flex gap-12">
-          {['Expenses', 'Balances', 'Analytics'].map((tab, i) => (
+          {tabs.map((tab) => (
             <button
-              key={tab}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`py-6 border-b-2 font-medium tracking-wide relative ${
-                i === 0
+                activeTab === tab.key
                   ? 'border-primary text-primary font-bold'
                   : 'border-transparent text-on-surface-variant hover:text-on-surface transition-colors'
               }`}
             >
-              {tab}
-              {i === 0 && (
+              {tab.label}
+              {activeTab === tab.key && (
                 <div className="absolute -bottom-[2px] left-0 w-full h-[2px] bg-primary shadow-[0_0_12px_rgba(66,229,176,0.8)]" />
               )}
             </button>
@@ -102,73 +188,119 @@ export default function GroupDetailPage() {
 
       {/* Content */}
       <div className="px-12 py-10 grid grid-cols-12 gap-10">
-        {/* Expenses */}
+        {/* Main content area */}
         <div className="col-span-8 space-y-12">
-          {expenses.map((section) => (
-            <div key={section.date}>
+          {activeTab === 'expenses' && (
+            <>
+              {mockExpenses.map((section) => (
+                <div key={section.date}>
+                  <h3 className="font-headline text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-6 flex items-center gap-4">
+                    {section.date}
+                    <span className="flex-1 h-px bg-outline-variant/10" />
+                  </h3>
+                  <div className="space-y-4">
+                    {section.items.map((item) => (
+                      <div
+                        key={item.title}
+                        className="group relative bg-surface-container-low hover:bg-surface-container transition-all duration-300 p-5 rounded-2xl flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-6">
+                          <div className="relative">
+                            <div className="w-12 h-12 rounded-full bg-surface-variant ring-2 ring-primary/20 flex items-center justify-center text-sm font-bold text-on-surface-variant">
+                              {item.payer[0]}
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-surface-container-high rounded-full flex items-center justify-center text-xs border border-white/5">
+                              {item.emoji}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="font-headline text-lg font-bold text-on-surface group-hover:text-primary transition-colors">
+                              {item.title}
+                            </h4>
+                            <p className="text-sm text-on-surface-variant">
+                              Paid by {item.payer} • {item.people} people
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-10">
+                          <div className="text-right">
+                            <div className="font-headline text-xl font-bold">
+                              {item.amount}{' '}
+                              <span className="text-sm opacity-50">
+                                {item.currency}
+                              </span>
+                            </div>
+                            <div
+                              className={`text-xs font-medium ${
+                                item.noteType === 'owe'
+                                  ? 'text-error'
+                                  : 'text-primary'
+                              }`}
+                            >
+                              {item.note}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button className="w-10 h-10 rounded-lg hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors">
+                              <Icon name="edit" className="text-[20px]" />
+                            </button>
+                            <button className="w-10 h-10 rounded-lg hover:bg-error/10 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
+                              <Icon name="delete" className="text-[20px]" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {activeTab === 'balances' && (
+            <div className="space-y-6">
               <h3 className="font-headline text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-6 flex items-center gap-4">
-                {section.date}
+                Settlement Plan
                 <span className="flex-1 h-px bg-outline-variant/10" />
               </h3>
-              <div className="space-y-4">
-                {section.items.map((item) => (
-                  <div
-                    key={item.title}
-                    className="group relative bg-surface-container-low hover:bg-surface-container transition-all duration-300 p-5 rounded-2xl flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-6">
-                      <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-surface-variant ring-2 ring-primary/20 flex items-center justify-center text-sm font-bold text-on-surface-variant">
-                          {item.payer[0]}
-                        </div>
-                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-surface-container-high rounded-full flex items-center justify-center text-xs border border-white/5">
-                          {item.emoji}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className="font-headline text-lg font-bold text-on-surface group-hover:text-primary transition-colors">
-                          {item.title}
-                        </h4>
-                        <p className="text-sm text-on-surface-variant">
-                          Paid by {item.payer} • {item.people} people
-                        </p>
-                      </div>
+              {mockBalances.map((b) => (
+                <div key={`${b.from}-${b.to}`} className="bg-surface-container-low p-6 rounded-2xl flex items-center justify-between group hover:bg-surface-container transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-sm font-bold">
+                      {b.from[0]}
                     </div>
-                    <div className="flex items-center gap-10">
-                      <div className="text-right">
-                        <div className="font-headline text-xl font-bold">
-                          {item.amount}{' '}
-                          <span className="text-sm opacity-50">
-                            {item.currency}
-                          </span>
-                        </div>
-                        <div
-                          className={`text-xs font-medium ${
-                            item.noteType === 'owe'
-                              ? 'text-error'
-                              : 'text-primary'
-                          }`}
-                        >
-                          {item.note}
-                        </div>
-                      </div>
-                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="w-10 h-10 rounded-lg hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors">
-                          <Icon name="edit" className="text-[20px]" />
-                        </button>
-                        <button className="w-10 h-10 rounded-lg hover:bg-error/10 hover:text-error flex items-center justify-center text-on-surface-variant transition-colors">
-                          <Icon name="delete" className="text-[20px]" />
-                        </button>
-                      </div>
+                    <div className="flex flex-col items-center">
+                      <Icon name="arrow_forward" className="text-primary text-sm" />
+                      <span className="text-[9px] text-on-surface-variant uppercase tracking-wider">pays</span>
+                    </div>
+                    <div className="w-10 h-10 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-sm font-bold">
+                      {b.to[0]}
+                    </div>
+                    <div className="ml-2">
+                      <p className="font-bold text-on-surface">{b.from} → {b.to}</p>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <div className="text-right flex items-center gap-4">
+                    <span className="font-headline font-bold text-2xl text-primary">{b.amount}</span>
+                    <button className="text-[10px] text-primary font-bold uppercase tracking-widest hover:underline opacity-0 group-hover:opacity-100 transition-opacity bg-primary/10 px-3 py-1.5 rounded-lg">
+                      Settle
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {activeTab === 'analytics' && (
+            <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
+              <Icon name="analytics" className="text-6xl mb-4 opacity-30" />
+              <p className="font-headline text-lg font-bold mb-1">Analytics Coming Soon</p>
+              <p className="text-sm opacity-60">Charts and spending insights will appear here.</p>
+            </div>
+          )}
         </div>
 
-        {/* Balances Panel */}
+        {/* Right Panel */}
         <div className="col-span-4">
           <div className="glass-panel p-8 rounded-3xl overflow-hidden relative border border-primary/10">
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-[100px]" />
@@ -177,7 +309,7 @@ export default function GroupDetailPage() {
               Group Balances
             </h3>
             <div className="space-y-6 mb-10">
-              {balances.map((b) => (
+              {mockBalances.map((b) => (
                 <div
                   key={`${b.from}-${b.to}`}
                   className="flex items-center justify-between group"
@@ -215,7 +347,7 @@ export default function GroupDetailPage() {
                   You are owed
                 </span>
                 <span className="font-headline text-3xl font-bold text-primary">
-                  $38.10
+                  ${group.balance.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -224,6 +356,39 @@ export default function GroupDetailPage() {
               <Icon name="payments" />
               Settle All
             </button>
+          </div>
+
+          {/* Members */}
+          <div className="mt-8 p-8 border border-outline-variant/10 rounded-3xl">
+            <h4 className="font-headline text-sm font-bold mb-6 uppercase tracking-widest text-on-surface-variant flex items-center justify-between">
+              <span>Members ({group.members.length})</span>
+              <button className="w-8 h-8 rounded-lg bg-surface-container-highest hover:text-primary transition-colors flex items-center justify-center">
+                <Icon name="person_add" className="text-[18px]" />
+              </button>
+            </h4>
+            <div className="space-y-3">
+              {group.members.map((m: GroupMemberResponse) => (
+                <div key={m.user.id} className="flex items-center justify-between group p-2 rounded-xl hover:bg-surface-container-low transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-xs font-bold text-on-surface-variant">
+                      {m.user.username[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-on-surface">{m.user.username}</p>
+                      <p className="text-[10px] text-on-surface-variant">{m.role}</p>
+                    </div>
+                  </div>
+                  {m.role !== 'ADMIN' && (
+                    <button
+                      onClick={() => handleRemoveMember(m.user.id)}
+                      className="w-7 h-7 rounded-lg hover:bg-error/10 hover:text-error flex items-center justify-center text-on-surface-variant opacity-0 group-hover:opacity-100 transition-all"
+                    >
+                      <Icon name="close" className="text-[16px]" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Quick Stats */}
@@ -237,7 +402,7 @@ export default function GroupDetailPage() {
                   Total Spent
                 </div>
                 <div className="font-headline font-bold text-lg">
-                  1,420 <span className="text-xs opacity-50">PLN</span>
+                  1,420 <span className="text-xs opacity-50">{group.currency}</span>
                 </div>
               </div>
               <div className="p-4 bg-surface-container-low rounded-xl">
@@ -250,6 +415,13 @@ export default function GroupDetailPage() {
           </div>
         </div>
       </div>
+
+      <GroupModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onSubmit={handleUpdateGroup}
+        editGroup={group}
+      />
     </div>
   )
 }
