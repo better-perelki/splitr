@@ -33,6 +33,12 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
+    if (!message) return
+    const timer = setTimeout(() => setMessage(null), 3000)
+    return () => clearTimeout(timer)
+  }, [message])
+
+  useEffect(() => {
     if (user) {
       setForm({
         username: user.username,
@@ -85,12 +91,15 @@ export default function ProfilePage() {
   return (
     <div className="p-12 max-w-6xl mx-auto">
       {message && (
-        <div className={`mb-6 p-3 rounded-xl text-sm text-center ${
-          message.type === 'success'
-            ? 'bg-primary/10 border border-primary/20 text-primary'
-            : 'bg-error/10 border border-error/20 text-error'
-        }`}>
-          {message.text}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-[fadeInUp_0.2s_ease-out]">
+          <div className={`px-5 py-3 rounded-xl text-sm font-medium shadow-lg flex items-center gap-2 ${
+            message.type === 'success'
+              ? 'bg-primary/10 border border-primary/20 text-primary backdrop-blur-sm'
+              : 'bg-error/10 border border-error/20 text-error backdrop-blur-sm'
+          }`}>
+            <Icon name={message.type === 'success' ? 'check_circle' : 'error'} className="text-lg" />
+            {message.text}
+          </div>
         </div>
       )}
 
