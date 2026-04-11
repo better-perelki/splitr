@@ -27,31 +27,44 @@ public class JwtUtil {
         this.refreshTokenExpiration = refreshTokenExpiration;
     }
 
+    private static final String CLAIM_TYPE = "typ";
+    private static final String TYPE_ACCESS = "access";
+    private static final String TYPE_REFRESH = "refresh";
+
     public String generateAccessToken(UUID userId) {
-        return buildToken(userId, accessTokenExpiration);
+        return buildToken(userId, accessTokenExpiration, TYPE_ACCESS);
     }
 
     public String generateRefreshToken(UUID userId) {
-        return buildToken(userId, refreshTokenExpiration);
+        return buildToken(userId, refreshTokenExpiration, TYPE_REFRESH);
     }
 
     public UUID getUserIdFromToken(String token) {
         return UUID.fromString(parseClaims(token).getSubject());
     }
 
-    public boolean isTokenValid(String token) {
+    public boolean isValidAccessToken(String token) {
+        return isTokenOfType(token, TYPE_ACCESS);
+    }
+
+    public boolean isValidRefreshToken(String token) {
+        return isTokenOfType(token, TYPE_REFRESH);
+    }
+
+    private boolean isTokenOfType(String token, String expectedType) {
         try {
-            parseClaims(token);
-            return true;
+            var claims = parseClaims(token);
+            return expectedType.equals(claims.get(CLAIM_TYPE, String.class));
         } catch (Exception e) {
             return false;
         }
     }
 
-    private String buildToken(UUID userId, long expiration) {
+    private String buildToken(UUID userId, long expiration, String type) {
         var now = new Date();
         return Jwts.builder()
                 .subject(userId.toString())
+                .claim(CLAIM_TYPE, type)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + expiration))
                 .signWith(key)

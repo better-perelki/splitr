@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { QrReader } from 'react-qr-reader'
+import { useRef, useState } from 'react'
+import { Scanner } from '@yudiel/react-qr-scanner'
+import type { IDetectedBarcode } from '@yudiel/react-qr-scanner'
 import Icon from './Icon'
 
 type Props = {
@@ -8,24 +9,21 @@ type Props = {
 }
 
 export function ScanQr({ onResult, onClose }: Props) {
-    const [isScannerActive, setIsScannerActive] = useState(false)
     const [isClosing, setIsClosing] = useState(false)
-
-    useEffect(() => {
-        setIsScannerActive(true)
-        return () => {
-            setIsScannerActive(false)
-        }
-    }, [])
+    const handled = useRef(false)
 
     const handleSafeAction = (callback: () => void) => {
         if (isClosing) return
         setIsClosing(true)
-        setIsScannerActive(false)
+        setTimeout(callback, 150)
+    }
 
-        setTimeout(() => {
-            callback()
-        }, 150)
+    const handleScan = (results: IDetectedBarcode[]) => {
+        const text = results[0]?.rawValue
+        if (text && !handled.current) {
+            handled.current = true
+            handleSafeAction(() => onResult(text))
+        }
     }
 
     if (isClosing) return null
@@ -49,18 +47,11 @@ export function ScanQr({ onResult, onClose }: Props) {
                 </div>
 
                 <div className="relative rounded-2xl overflow-hidden bg-black aspect-square border-2 border-primary/20">
-                    {isScannerActive && (
-                        <QrReader
-                            constraints={{ facingMode: 'environment' }}
-                            onResult={(result) => {
-                                if (!!result) {
-                                    handleSafeAction(() => onResult(result.getText()))
-                                }
-                            }}
-                            containerStyle={{ width: '100%', height: '100%' }}
-                            videoStyle={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                    )}
+                    <Scanner
+                        onScan={handleScan}
+                        constraints={{ facingMode: 'environment' }}
+                        styles={{ container: { width: '100%', height: '100%' }, video: { objectFit: 'cover' } }}
+                    />
 
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                         <div className="absolute inset-0 bg-black/20" />

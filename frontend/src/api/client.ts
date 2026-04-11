@@ -6,13 +6,18 @@ import axios, {
     AxiosHeaders,
 } from 'axios'
 
-let accessToken: string | null = null
-let refreshToken: string | null = null
+const TOKEN_KEY = 'splitr_access_token'
+const REFRESH_KEY = 'splitr_refresh_token'
+
+let accessToken: string | null = localStorage.getItem(TOKEN_KEY)
+let refreshToken: string | null = localStorage.getItem(REFRESH_KEY)
 let onLogout: (() => void) | null = null
 
 export function setTokens(access: string, refresh: string) {
     accessToken = access
     refreshToken = refresh
+    localStorage.setItem(TOKEN_KEY, access)
+    localStorage.setItem(REFRESH_KEY, refresh)
 }
 
 export function getAccessToken() {
@@ -26,6 +31,8 @@ export function getRefreshToken() {
 export function clearTokens() {
     accessToken = null
     refreshToken = null
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(REFRESH_KEY)
 }
 
 export function setLogoutHandler(handler: () => void) {

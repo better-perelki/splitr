@@ -61,6 +61,10 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email or password");
         }
 
+        if (!user.isActive()) {
+            throw new IllegalArgumentException("Account is deactivated");
+        }
+
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
 
@@ -69,6 +73,10 @@ public class AuthService {
 
     @Transactional
     public AuthResponse refreshToken(RefreshRequest request) {
+        if (!jwtUtil.isValidRefreshToken(request.refreshToken())) {
+            throw new IllegalArgumentException("Invalid refresh token");
+        }
+
         var storedToken = refreshTokenRepository.findByToken(request.refreshToken())
                 .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
 
@@ -84,6 +92,8 @@ public class AuthService {
     }
 
     private AuthResponse buildAuthResponse(User user) {
+        refreshTokenRepository.deleteAllByUserId(user.getId());
+
         String accessToken = jwtUtil.generateAccessToken(user.getId());
         String rawRefreshToken = jwtUtil.generateRefreshToken(user.getId());
 

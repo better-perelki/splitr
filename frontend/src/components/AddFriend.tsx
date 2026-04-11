@@ -23,7 +23,7 @@ export default function AddFriendModal({open, onClose, existingFriends, onSucces
     const [loading, setLoading] = useState(false)
     const [sending, setSending] = useState<string | null>(null)
     const [pendingRequests, setPendingRequests] = useState<Record<string, string>>({})
-    const {filterNewPeople, fetchFriends} = useFriends();
+    const {filterNewPeople} = useFriends();
 
     useEffect(() => {
         if (!open) return
