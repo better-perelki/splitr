@@ -1,6 +1,7 @@
 package com.splitr.controller;
 
 import com.splitr.dto.*;
+import com.splitr.entity.AutoConnectResult;
 import com.splitr.service.FriendService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +29,13 @@ public class FriendController {
                                             Authentication auth) {
         friendService.sendRequest(userId(auth), request.receiverId());
         return ResponseEntity.status(201).build();
+    }
+
+    @PostMapping("/auto-connect/{userId}")
+    public ResponseEntity<AutoConnectResult> autoConnect(@PathVariable UUID userId,
+                                                         Authentication auth) {
+        AutoConnectResult result = friendService.autoConnect(userId(auth), userId);
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping("/request/by-username")

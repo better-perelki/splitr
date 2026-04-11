@@ -81,4 +81,11 @@ public class UserService {
                 .map(u -> new UserSummary(u.getId(), u.getUsername(), u.getEmail(), u.getAvatarUrl()))
                 .getContent();
     }
+
+    @Transactional(readOnly = true)
+    public UserSummary getUserSummary(UUID userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return new UserSummary(user.getId(), user.getUsername(), user.getEmail(), user.getAvatarUrl());
+    }
 }

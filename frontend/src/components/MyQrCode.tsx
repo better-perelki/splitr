@@ -1,8 +1,8 @@
 import QRCode from 'react-qr-code'
 import Icon from './Icon'
 
-export function MyQrCode({userId}: { userId: string }) {
-    const value = `http://localhost:5173/add-friend?userId=${userId}`
+export function MyQrCode({ userId }: { userId: string }) {
+    const value = `${window.location.origin}/add-friend?userId=${userId}`
 
     const handleCopy = async () => {
         try {
@@ -19,7 +19,7 @@ export function MyQrCode({userId}: { userId: string }) {
                 <h3 className="font-headline text-lg font-bold">
                     Your QR Code
                 </h3>
-                <Icon name="qr_code" className="text-primary"/>
+                <Icon name="qr_code" className="text-primary" />
             </div>
 
             <p className="text-xs text-on-surface-variant mb-4">
@@ -27,7 +27,7 @@ export function MyQrCode({userId}: { userId: string }) {
             </p>
 
             <div className="bg-white p-4 rounded-xl flex justify-center mb-4">
-                <QRCode value={value} size={180}/>
+                <QRCode value={value} size={180} />
             </div>
 
             <div className="flex gap-2">
@@ -35,7 +35,7 @@ export function MyQrCode({userId}: { userId: string }) {
                     onClick={handleCopy}
                     className="flex-1 py-2 bg-surface-container-high text-on-surface text-xs font-bold rounded-lg hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2"
                 >
-                    <Icon name="content_copy" className="text-sm"/>
+                    <Icon name="content_copy" className="text-sm" />
                     Copy link
                 </button>
             </div>

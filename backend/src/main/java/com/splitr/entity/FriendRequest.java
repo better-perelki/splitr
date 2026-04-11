@@ -35,7 +35,7 @@ public class FriendRequest {
 
     @PrePersist
     void onCreate() {
-        createdAt = Instant.now();
-        status = FriendRequestStatus.PENDING;
+        if (createdAt == null) createdAt = Instant.now();
+        if (status == null) status = FriendRequestStatus.PENDING;
     }
 }

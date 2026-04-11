@@ -51,7 +51,7 @@ export default function AddFriendModal({
             setLoading(true)
             try {
                 const users = await searchUsers(query)
-                setResults(users)
+                setResults(users.filter(u => u.id !== userId))
             } catch {
                 setResults([])
             } finally {
@@ -153,11 +153,10 @@ export default function AddFriendModal({
                         <button
                             key={t.id}
                             onClick={() => setTab(t.id)}
-                            className={`flex-1 py-2.5 text-xs font-headline font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-                                tab === t.id
+                            className={`flex-1 py-2.5 text-xs font-headline font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 ${tab === t.id
                                     ? 'bg-surface-container-highest text-primary'
                                     : 'text-on-surface-variant hover:text-on-surface'
-                            }`}
+                                }`}
                         >
                             <Icon name={t.icon} className="text-sm" />
                             {t.label}

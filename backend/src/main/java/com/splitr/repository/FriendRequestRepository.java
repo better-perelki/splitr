@@ -25,4 +25,13 @@ public interface FriendRequestRepository extends JpaRepository<FriendRequest, UU
         AND fr.status = com.splitr.entity.FriendRequestStatus.ACCEPTED
     """)
     List<FriendRequest> findAcceptedForUser(UUID userId);
+
+    @Query("""
+    SELECT fr FROM FriendRequest fr
+    WHERE 
+        (fr.sender.id = :user1 AND fr.receiver.id = :user2)
+        OR
+        (fr.sender.id = :user2 AND fr.receiver.id = :user1)
+""")
+    Optional<FriendRequest> findRelationBetweenUsers(UUID user1, UUID user2);
 }

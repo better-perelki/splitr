@@ -28,6 +28,7 @@ export default function SignUpPage() {
     setLoading(true)
     try {
       await signup(username, email, password)
+      
       navigate('/')
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.data?.error) {

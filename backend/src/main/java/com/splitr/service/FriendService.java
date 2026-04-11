@@ -2,6 +2,7 @@ package com.splitr.service;
 
 import com.splitr.dto.FriendRequestDetails;
 import com.splitr.dto.Friendship;
+import com.splitr.entity.AutoConnectResult;
 import com.splitr.entity.FriendRequest;
 import com.splitr.entity.FriendRequestStatus;
 import com.splitr.entity.User;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -122,6 +124,43 @@ public class FriendService {
         }
 
         fr.setStatus(FriendRequestStatus.ACCEPTED);
+    }
+
+    public AutoConnectResult autoConnect(UUID currentUserId, UUID targetUserId) {
+
+        if (currentUserId.equals(targetUserId)) {
+            throw new IllegalArgumentException("Cannot add yourself");
+        }
+
+        FriendRequest relation = friendRequestRepository
+                .findRelationBetweenUsers(currentUserId, targetUserId)
+                .orElse(null);
+
+        if (relation == null) {
+            FriendRequest fr = new FriendRequest();
+            var sender = userRepository.findById(currentUserId)
+                    .orElseThrow(() -> new IllegalArgumentException("Sender not found"));
+            var receiver = userRepository.findById(targetUserId)
+                    .orElseThrow(() -> new IllegalArgumentException("Receiver not found"));
+            fr.setSender(sender);
+            fr.setReceiver(receiver);
+            fr.setStatus(FriendRequestStatus.ACCEPTED);
+
+            friendRequestRepository.save(fr);
+            return AutoConnectResult.SUCCESS;
+        }
+
+        if (relation.getStatus() == FriendRequestStatus.ACCEPTED) {
+            return AutoConnectResult.ALREADY_FRIENDS;
+        }
+
+        if (relation.getStatus() == FriendRequestStatus.PENDING || relation.getStatus() == FriendRequestStatus.DECLINED ) {
+            relation.setStatus(FriendRequestStatus.ACCEPTED);
+            friendRequestRepository.save(relation);
+            return AutoConnectResult.SUCCESS;
+        }
+
+        return AutoConnectResult.SUCCESS;
     }
 
     @Transactional

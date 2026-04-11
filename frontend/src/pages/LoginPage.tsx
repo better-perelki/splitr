@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')

@@ -52,6 +52,11 @@ public class UserController {
         return userService.getAllUsersExcluding(userId(auth), PageRequest.of(page, Math.min(size, 50)));
     }
 
+    @GetMapping("/summary/{id}")
+    public UserSummary getUserSummary(@PathVariable("id") UUID id) {
+        return userService.getUserSummary(id);
+    }
+
     private UUID userId(Authentication auth) {
         return (UUID) auth.getPrincipal();
     }

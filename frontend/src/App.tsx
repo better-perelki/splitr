@@ -10,6 +10,7 @@ import FriendsPage from './pages/FriendsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ProfilePage from './pages/ProfilePage'
 import PlaceholderPage from './pages/PlaceholderPage'
+import InvitePage from './pages/InvitePage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -20,7 +21,17 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 function GuestRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
   if (loading) return null
-  return isAuthenticated ? <Navigate to="/" replace /> : children
+  
+  if (isAuthenticated) {
+    const pendingFriendId = sessionStorage.getItem('pendingFriendId')
+    if (pendingFriendId) {
+      sessionStorage.removeItem('pendingFriendId')
+      return <Navigate to={`/invite?userId=${pendingFriendId}`} replace />
+    }
+    return <Navigate to="/" replace />
+  }
+  
+  return children
 }
 
 export default function App() {
@@ -30,6 +41,8 @@ export default function App() {
       <Route path="/landing" element={<GuestRoute><LandingPage /></GuestRoute>} />
       <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
       <Route path="/signup" element={<GuestRoute><SignUpPage /></GuestRoute>} />
+      <Route path="/invite" element={<InvitePage />} />
+      <Route path="/add-friend" element={<InvitePage />} />
 
       {/* Protected routes */}
       <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
