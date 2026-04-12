@@ -7,6 +7,19 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
-export type { HealthResponse } from './models/HealthResponse';
+export type { AuthResponse } from './models/AuthResponse';
+export type { FriendRequestDetails } from './models/FriendRequestDetails';
+export type { Friendship } from './models/Friendship';
+export type { LoginRequest } from './models/LoginRequest';
+export type { RefreshRequest } from './models/RefreshRequest';
+export type { RegisterRequest } from './models/RegisterRequest';
+export type { SendFriendRequest } from './models/SendFriendRequest';
+export type { UpdateProfileRequest } from './models/UpdateProfileRequest';
+export type { UserProfileResponse } from './models/UserProfileResponse';
+export type { UserSearchResponse } from './models/UserSearchResponse';
+export type { UserSummary } from './models/UserSummary';
 
-export { DefaultService } from './services/DefaultService';
+export { AuthControllerService } from './services/AuthControllerService';
+export { FriendsService } from './services/FriendsService';
+export { HealthControllerService } from './services/HealthControllerService';
+export { UserControllerService } from './services/UserControllerService';

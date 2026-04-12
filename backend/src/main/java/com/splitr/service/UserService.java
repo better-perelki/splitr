@@ -2,6 +2,7 @@ package com.splitr.service;
 
 import com.splitr.dto.*;
 import com.splitr.repository.UserRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,10 +68,24 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<UserSearchResponse> search(String query) {
+    public List<UserSearchResponse> search(String query, Pageable pageable) {
         if (query == null || query.isBlank()) return List.of();
-        return userRepository.searchByEmailOrPhone(query.trim()).stream()
+        return userRepository.search(query.trim(), pageable)
                 .map(u -> new UserSearchResponse(u.getId(), u.getEmail(), u.getPhone(), u.getUsername(), u.getAvatarUrl()))
-                .toList();
+                .getContent();
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSummary> getAllUsersExcluding(UUID userId, Pageable pageable) {
+        return userRepository.findAllExcluding(userId, pageable)
+                .map(u -> new UserSummary(u.getId(), u.getUsername(), u.getEmail(), u.getAvatarUrl()))
+                .getContent();
+    }
+
+    @Transactional(readOnly = true)
+    public UserSummary getUserSummary(UUID userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return new UserSummary(user.getId(), user.getUsername(), user.getEmail(), user.getAvatarUrl());
     }
 }

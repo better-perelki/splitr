@@ -3,6 +3,7 @@ package com.splitr.controller;
 import com.splitr.dto.*;
 import com.splitr.service.UserService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,8 +39,22 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public List<UserSearchResponse> search(@RequestParam("q") String query) {
-        return userService.search(query);
+    public List<UserSearchResponse> search(@RequestParam("q") String query,
+                                           @RequestParam(defaultValue = "0") int page,
+                                           @RequestParam(defaultValue = "20") int size) {
+        return userService.search(query, PageRequest.of(page, Math.min(size, 50)));
+    }
+
+    @GetMapping("/all")
+    public List<UserSummary> getAllUsers(Authentication auth,
+                                        @RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "20") int size) {
+        return userService.getAllUsersExcluding(userId(auth), PageRequest.of(page, Math.min(size, 50)));
+    }
+
+    @GetMapping("/summary/{id}")
+    public UserSummary getUserSummary(@PathVariable("id") UUID id) {
+        return userService.getUserSummary(id);
     }
 
     private UUID userId(Authentication auth) {

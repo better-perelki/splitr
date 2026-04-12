@@ -1,25 +1,432 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
-  title: Splitr API
-  version: 0.1.0
+  title: OpenAPI definition
+  version: v0
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+tags:
+- name: Friends
+  description: Operations for managing friends and friend requests
 paths:
-  /api/health:
+  /api/users/me:
     get:
-      operationId: getHealth
-      summary: Health check
+      tags:
+      - user-controller
+      operationId: getProfile
       responses:
-        '200':
+        "200":
           description: OK
           content:
-            application/json:
+            '*/*':
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/UserProfileResponse"
+    put:
+      tags:
+      - user-controller
+      operationId: updateProfile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+  /api/users/me/avatar:
+    post:
+      tags:
+      - user-controller
+      operationId: uploadAvatar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+  /api/friends/request:
+    post:
+      tags:
+      - Friends
+      summary: Send a friend request
+      operationId: sendRequest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFriendRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /api/friends/request/{id}/decline:
+    post:
+      tags:
+      - Friends
+      summary: Decline a friend request
+      operationId: declineRequest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/friends/request/{id}/accept:
+    post:
+      tags:
+      - Friends
+      summary: Accept a friend request
+      operationId: acceptRequest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/friends/request/by-username:
+    post:
+      tags:
+      - Friends
+      summary: Send a friend request using username
+      operationId: sendByUsername
+      parameters:
+      - name: username
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+  /api/auth/register:
+    post:
+      tags:
+      - auth-controller
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /api/auth/refresh-token:
+    post:
+      tags:
+      - auth-controller
+      operationId: refreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /api/auth/login:
+    post:
+      tags:
+      - auth-controller
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+  /api/users/search:
+    get:
+      tags:
+      - user-controller
+      operationId: search
+      parameters:
+      - name: q
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSearchResponse"
+  /api/health:
+    get:
+      tags:
+      - health-controller
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /api/friends:
+    get:
+      tags:
+      - Friends
+      summary: Get friends list with balances
+      operationId: getFriends
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Friendship"
+  /api/friends/sent:
+    get:
+      tags:
+      - Friends
+      summary: Get sent friend requests
+      operationId: getSent
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendRequestDetails"
+  /api/friends/pending:
+    get:
+      tags:
+      - Friends
+      summary: Get incoming friend requests
+      operationId: getPending
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FriendRequestDetails"
+  /api/friends/{id}:
+    delete:
+      tags:
+      - Friends
+      summary: Remove a friend
+      operationId: removeFriend
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+  /api/friends/request/{id}:
+    delete:
+      tags:
+      - Friends
+      summary: Cancel sent friend request
+      operationId: cancelRequest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
 components:
   schemas:
-    HealthResponse:
+    UpdateProfileRequest:
       type: object
       properties:
+        username:
+          type: string
+          maxLength: 50
+          minLength: 0
+        phone:
+          type: string
+          maxLength: 20
+          minLength: 0
+        defaultCurrency:
+          type: string
+          maxLength: 3
+          minLength: 3
+        timezone:
+          type: string
+          maxLength: 50
+          minLength: 0
+    UserProfileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phone:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+        defaultCurrency:
+          type: string
+        timezone:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    SendFriendRequest:
+      type: object
+      properties:
+        receiverId:
+          type: string
+          format: uuid
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          maxLength: 50
+          minLength: 0
+        email:
+          type: string
+          maxLength: 255
+          minLength: 0
+        password:
+          type: string
+          maxLength: 100
+          minLength: 6
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfileResponse"
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+    UserSearchResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        phone:
+          type: string
+        username:
+          type: string
+        avatarUrl:
+          type: string
+    Friendship:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        balance:
+          type: number
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: string
+    FriendRequestDetails:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sender:
+          $ref: "#/components/schemas/UserSummary"
+        receiver:
+          $ref: "#/components/schemas/UserSummary"
         status:
           type: string
-        service:
+          enum:
+          - PENDING
+          - ACCEPTED
+          - DECLINED
+        createdAt:
           type: string
+          format: date-time
