@@ -1,4 +1,5 @@
 import api from './client'
+import type { AxiosResponse } from 'axios'
 
 export type GroupType = 'TRIP' | 'APARTMENT' | 'EVENT' | 'OTHER'
 export type GroupRole = 'ADMIN' | 'MEMBER'
@@ -42,16 +43,28 @@ export interface GroupUpdateRequest {
   type: GroupType
 }
 
-import type { AxiosResponse } from 'axios'
-
 export const groupsApi = {
-  list: () => api.get<GroupResponse[]>('/groups').then((r: AxiosResponse<GroupResponse[]>) => r.data),
-  get: (id: string) => api.get<GroupDetailsResponse>(`/groups/${id}`).then((r: AxiosResponse<GroupDetailsResponse>) => r.data),
-  create: (data: GroupCreateRequest) => api.post<GroupResponse>('/groups', data).then((r: AxiosResponse<GroupResponse>) => r.data),
+  list: () =>
+      api.get<GroupResponse[]>('/groups').then((r: AxiosResponse<GroupResponse[]>) => r.data),
+
+  get: (id: string) =>
+      api.get<GroupDetailsResponse>(`/groups/${id}`).then((r: AxiosResponse<GroupDetailsResponse>) => r.data),
+
+  create: (data: GroupCreateRequest) =>
+      api.post<GroupResponse>('/groups', data).then((r: AxiosResponse<GroupResponse>) => r.data),
+
   update: (id: string, data: GroupUpdateRequest) =>
-    api.put<GroupResponse>(`/groups/${id}`, data).then((r: AxiosResponse<GroupResponse>) => r.data),
+      api.put<GroupResponse>(`/groups/${id}`, data).then((r: AxiosResponse<GroupResponse>) => r.data),
+
   addMember: (groupId: string, userId: string) =>
-    api.post(`/groups/${groupId}/members`, { userId }),
+      api.post(`/groups/${groupId}/members`, { userId }),
+
   removeMember: (groupId: string, userId: string) =>
-    api.delete(`/groups/${groupId}/members/${userId}`),
+      api.delete(`/groups/${groupId}/members/${userId}`),
+
+  leaveGroup: (groupId: string) =>
+      api.post(`/groups/${groupId}/leave`),
+
+  transferAdmin: (groupId: string, newAdminId: string) =>
+      api.post(`/groups/${groupId}/transfer-admin/${newAdminId}`)
 }

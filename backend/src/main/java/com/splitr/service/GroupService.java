@@ -40,7 +40,7 @@ public class GroupService {
         group.setIcon(request.icon());
         group.setCurrency(request.currency());
         group.setType(request.type());
-        
+
         group = groupRepository.save(group);
 
         GroupMember member = new GroupMember();
@@ -116,7 +116,7 @@ public class GroupService {
         getGroupIfAdmin(currentUserId, groupId);
 
         if (currentUserId.equals(targetUserId)) {
-            throw new IllegalArgumentException("Cannot remove yourself from the group");
+            throw new IllegalArgumentException("Cannot remove yourself from the group. Use leave group instead.");
         }
 
         GroupMember targetMember = groupMemberRepository.findByGroupIdAndUserId(groupId, targetUserId)
@@ -126,11 +126,63 @@ public class GroupService {
             throw new IllegalArgumentException("Cannot remove an admin from the group");
         }
 
+        if (hasUserOutstandingBalances(groupId, targetUserId)) {
+            throw new IllegalStateException("Cannot remove a member who has unsettled debts.");
+        }
+
         groupMemberRepository.delete(targetMember);
+    }
+
+    public void leaveGroup(UUID userId, UUID groupId) {
+        GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("You are not a member of this group"));
+
+        if (hasUserOutstandingBalances(groupId, userId)) {
+            throw new IllegalStateException("You cannot leave the group until all your debts are settled.");
+        }
+
+        if (member.getRole() == GroupRole.ADMIN) {
+            long adminCount = groupMemberRepository.findByGroupId(groupId).stream()
+                    .filter(m -> m.getRole() == GroupRole.ADMIN)
+                    .count();
+            long totalMembers = groupMemberRepository.findByGroupId(groupId).size();
+
+            if (adminCount <= 1 && totalMembers > 1) {
+                throw new IllegalStateException("You are the only admin. Transfer your role before leaving the group.");
+            }
+        }
+
+        groupMemberRepository.delete(member);
+
+    }
+
+    public void transferAdminRole(UUID currentAdminId, UUID groupId, UUID newAdminId) {
+        if (currentAdminId.equals(newAdminId)) {
+            throw new IllegalArgumentException("You cannot transfer the admin role to yourself.");
+        }
+
+        Group group = getGroupIfAdmin(currentAdminId, groupId);
+
+        GroupMember currentAdminMember = groupMemberRepository.findByGroupIdAndUserId(groupId, currentAdminId)
+                .orElseThrow(() -> new ResourceNotFoundException("Current admin member not found"));
+
+        GroupMember newAdminMember = groupMemberRepository.findByGroupIdAndUserId(groupId, newAdminId)
+                .orElseThrow(() -> new ResourceNotFoundException("Target user is not a member of this group"));
+
+        currentAdminMember.setRole(GroupRole.MEMBER);
+        newAdminMember.setRole(GroupRole.ADMIN);
+
+        groupMemberRepository.save(currentAdminMember);
+        groupMemberRepository.save(newAdminMember);
     }
 
     public void deleteGroup(UUID userId, UUID groupId) {
         getGroupIfAdmin(userId, groupId);
+
+        if (hasGroupOutstandingBalances(groupId)) {
+            throw new IllegalStateException("Cannot delete the group until all debts within it are settled.");
+        }
+
         groupRepository.deleteById(groupId);
     }
 
@@ -168,5 +220,19 @@ public class GroupService {
                 user.getUsername(),
                 user.getAvatarUrl()
         );
+    }
+
+    // --- MOCKI BIZNESOWE DOT. ROZLICZEŃ (Do wdrożenia w połączeniu np. z ExpenseService/BalanceService) ---
+
+    private boolean hasUserOutstandingBalances(UUID groupId, UUID userId) {
+        // TODO: Zaimplementuj logikę sprawdzającą, czy dany użytkownik jest na zero ze wszystkimi w grupie
+        // Zwróć true jeśli użytkownik jest komuś dłużny, lub ktoś jemu
+        return false;
+    }
+
+    private boolean hasGroupOutstandingBalances(UUID groupId) {
+        // TODO: Zaimplementuj logikę sprawdzającą, czy ktokolwiek w grupie ma długi
+        // Zwróć true jeśli jakiekolwiek salda nie są równe 0
+        return false;
     }
 }

@@ -37,26 +37,40 @@ public class GroupController {
     }
 
     @PutMapping("/{id}")
-    public GroupResponse updateGroup(Authentication auth, 
-                                     @PathVariable("id") UUID groupId, 
+    public GroupResponse updateGroup(Authentication auth,
+                                     @PathVariable("id") UUID groupId,
                                      @Valid @RequestBody GroupUpdateRequest request) {
         return groupService.updateGroup(userId(auth), groupId, request);
     }
 
     @PostMapping("/{id}/members")
     @ResponseStatus(HttpStatus.CREATED)
-    public void addMember(Authentication auth, 
-                          @PathVariable("id") UUID groupId, 
+    public void addMember(Authentication auth,
+                          @PathVariable("id") UUID groupId,
                           @Valid @RequestBody AddMemberRequest request) {
         groupService.addMember(userId(auth), groupId, request);
     }
 
     @DeleteMapping("/{id}/members/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeMember(Authentication auth, 
-                             @PathVariable("id") UUID groupId, 
+    public void removeMember(Authentication auth,
+                             @PathVariable("id") UUID groupId,
                              @PathVariable("userId") UUID targetUserId) {
         groupService.removeMember(userId(auth), groupId, targetUserId);
+    }
+
+    @PostMapping("/{id}/leave")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void leaveGroup(Authentication auth, @PathVariable("id") UUID groupId) {
+        groupService.leaveGroup(userId(auth), groupId);
+    }
+
+    @PostMapping("/{id}/transfer-admin/{newAdminId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void transferAdminRole(Authentication auth,
+                                  @PathVariable("id") UUID groupId,
+                                  @PathVariable("newAdminId") UUID newAdminId) {
+        groupService.transferAdminRole(userId(auth), groupId, newAdminId);
     }
 
     @DeleteMapping("/{id}")
