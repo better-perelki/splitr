@@ -1,5 +1,16 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import { useAuth } from '../contexts/AuthContext'
+import GroupModal from '../components/GroupModal'
+import { groupsApi, type GroupResponse, type GroupCreateRequest } from '../api/groups'
+
+const TYPE_ICONS: Record<string, string> = {
+  TRIP: 'landscape',
+  APARTMENT: 'home',
+  EVENT: 'celebration',
+  OTHER: 'category',
+}
 
 const recentActivity = [
   { name: 'Aleksandra', title: 'Dinner at Mamma Mia', icon: 'local_pizza', iconColor: 'text-orange-400', amount: '$42.00', status: 'owed', bg: 'bg-orange-900/30' },
@@ -8,14 +19,42 @@ const recentActivity = [
   { name: 'Marek', title: 'Lunch Break', icon: 'restaurant', iconColor: 'text-purple-400', amount: '$12.00', status: 'owe', bg: 'bg-purple-900/30' },
 ]
 
-const groups = [
-  { name: 'Tatry 2025', subtitle: 'Annual Hiking Trip', icon: 'landscape', total: '$1,240.00', owed: '$45.00', oweStatus: 'owed', members: 5 },
-  { name: 'Współlokatorzy', subtitle: 'Monthly Bills & Rent', icon: 'home', total: '$2,100.00', owed: '$320.00', oweStatus: 'owe', members: 3 },
-  { name: 'Ślub Kaśki', subtitle: 'Wedding Gift Fund', icon: 'celebration', total: '$4,500.00', owed: '$0.00', oweStatus: 'balanced', members: 11 },
+// Fallback mock data when backend is unavailable
+const MOCK_GROUPS: GroupResponse[] = [
+  { id: '1', name: 'Tatry 2025', icon: '🏔️', currency: 'PLN', type: 'TRIP', balance: 45 },
+  { id: '2', name: 'Współlokatorzy', icon: '🏠', currency: 'PLN', type: 'APARTMENT', balance: -320 },
+  { id: '3', name: 'Ślub Kaśki', icon: '🎉', currency: 'PLN', type: 'EVENT', balance: 0 },
 ]
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const [showGroupModal, setShowGroupModal] = useState(false)
+  const [groups, setGroups] = useState<GroupResponse[]>(MOCK_GROUPS)
+
+  // Load groups from backend (fallback to mock if unavailable)
+  useEffect(() => {
+    groupsApi.list()
+      .then(data => { setGroups(data) })
+      .catch(() => { /* keep mock data */ })
+  }, [])
+
+  const handleCreateGroup = async (data: GroupCreateRequest) => {
+    try {
+      const newGroup = await groupsApi.create(data)
+      setGroups(prev => [...prev, newGroup])
+    } catch {
+      // If backend is unavailable, add locally with mock id
+      setGroups(prev => [...prev, {
+        id: crypto.randomUUID(),
+        name: data.name,
+        icon: data.icon ?? null,
+        currency: data.currency,
+        type: data.type,
+        balance: 0,
+      }])
+    }
+  }
 
   return (
     <div className="p-12 min-h-screen relative overflow-hidden">
@@ -108,79 +147,67 @@ export default function DashboardPage() {
             <h3 className="font-headline text-xl font-bold tracking-tight">
               Your Groups
             </h3>
-            <button className="p-2 bg-surface-container-highest rounded-lg hover:text-primary transition-colors">
+            <button
+              onClick={() => setShowGroupModal(true)}
+              className="p-2 bg-surface-container-highest rounded-lg hover:text-primary transition-colors"
+            >
               <Icon name="add" />
             </button>
           </div>
           <div className="grid grid-cols-1 gap-4">
             {groups.map((group) => (
               <div
-                key={group.name}
-                className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300"
+                key={group.id}
+                onClick={() => navigate(`/groups/${group.id}`)}
+                className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
               >
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Icon name={group.icon} className="text-6xl" />
+                  <Icon name={TYPE_ICONS[group.type] ?? 'category'} className="text-6xl" />
                 </div>
                 <div className="relative z-10">
                   <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h4 className="font-headline font-bold text-lg">
-                        {group.name}
-                      </h4>
-                      <p className="text-xs text-on-surface-variant font-medium">
-                        {group.subtitle}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{group.icon ?? '📌'}</span>
+                      <div>
+                        <h4 className="font-headline font-bold text-lg">
+                          {group.name}
+                        </h4>
+                        <p className="text-xs text-on-surface-variant font-medium capitalize">
+                          {group.type.toLowerCase()}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex -space-x-3">
-                      {Array.from({ length: Math.min(group.members, 3) }).map((_, j) => (
-                        <div
-                          key={j}
-                          className="w-8 h-8 rounded-full border-2 border-surface bg-surface-variant"
-                        />
-                      ))}
-                      {group.members > 3 && (
-                        <div className="w-8 h-8 rounded-full border-2 border-surface bg-surface-container-highest flex items-center justify-center text-[10px] font-bold text-primary">
-                          +{group.members - 3}
-                        </div>
-                      )}
-                    </div>
+                    <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
+                      {group.currency}
+                    </span>
                   </div>
                   <div className="flex justify-between items-end">
                     <div>
                       <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
-                        Total Spent
-                      </p>
-                      <p className="text-2xl font-headline font-bold">
-                        {group.total}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`text-[10px] uppercase tracking-widest font-bold ${
-                          group.oweStatus === 'owed'
-                            ? 'text-primary'
-                            : group.oweStatus === 'owe'
-                              ? 'text-error'
-                              : 'text-on-surface-variant'
-                        }`}
-                      >
-                        {group.oweStatus === 'owed'
-                          ? "You're owed"
-                          : group.oweStatus === 'owe'
-                            ? 'You owe'
-                            : 'Balanced'}
+                        Balance
                       </p>
                       <p
                         className={`text-xl font-headline font-bold ${
-                          group.oweStatus === 'owed'
+                          group.balance > 0
                             ? 'text-primary'
-                            : group.oweStatus === 'owe'
+                            : group.balance < 0
                               ? 'text-error'
                               : 'text-on-surface'
                         }`}
                       >
-                        {group.owed}
+                        {group.balance > 0 ? '+' : ''}{group.balance.toFixed(2)} {group.currency}
                       </p>
+                    </div>
+                    <div
+                      className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-lg ${
+                        group.balance > 0
+                          ? 'bg-primary/10 text-primary'
+                          : group.balance < 0
+                            ? 'bg-error/10 text-error'
+                            : 'bg-surface-container-highest text-on-surface-variant'
+                      }`}
+                    >
+                      {group.balance > 0 ? "You're owed" : group.balance < 0 ? 'You owe' : 'Balanced'}
                     </div>
                   </div>
                 </div>
@@ -189,6 +216,12 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      <GroupModal
+        isOpen={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        onSubmit={handleCreateGroup}
+      />
     </div>
   )
 }
