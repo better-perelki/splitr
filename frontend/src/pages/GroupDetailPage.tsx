@@ -4,6 +4,7 @@ import Icon from '../components/Icon'
 import GroupModal from '../components/GroupModal'
 import GroupMembersManager from '../components/GroupMembersManager'
 import { groupsApi, type GroupDetailsResponse, type GroupUpdateRequest, type GroupMemberResponse } from '../api/groups'
+import { useAuth } from '../contexts/AuthContext'
 
 type TabType = 'expenses' | 'balances' | 'analytics' | 'members'
 
@@ -50,7 +51,8 @@ export default function GroupDetailPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const currentUserId = localStorage.getItem('userId') || ''
+  const { user } = useAuth()
+  const currentUserId = user?.id || ''
 
   const currentUserRole = group?.members.find(m => m.user.id === currentUserId)?.role || 'MEMBER'
 
@@ -196,6 +198,7 @@ export default function GroupDetailPage() {
                       members={group.members}
                       currentUserId={currentUserId}
                       currentUserRole={currentUserRole}
+                      onMemberAdded={fetchGroupDetails}
                       onMemberRemoved={fetchGroupDetails}
                       onGroupLeft={() => navigate('/groups')}
                       onGroupDeleted={() => navigate('/groups')}
