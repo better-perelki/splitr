@@ -22,13 +22,15 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
+    private final FriendService friendService;
 
     public GroupService(GroupRepository groupRepository,
                         GroupMemberRepository groupMemberRepository,
-                        UserRepository userRepository) {
+                        UserRepository userRepository, FriendService friendService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
+        this.friendService = friendService;
     }
 
     public GroupResponse createGroup(UUID userId, GroupCreateRequest request) {
@@ -96,19 +98,26 @@ public class GroupService {
     }
 
     public void addMember(UUID currentUserId, UUID groupId, AddMemberRequest request) {
+        UUID userToAddId = request.userId();
+
         Group group = getGroupIfAdmin(currentUserId, groupId);
 
-        if (groupMemberRepository.findByGroupIdAndUserId(groupId, request.userId()).isPresent()) {
+        if (!friendService.areFriends(currentUserId, userToAddId)) {
+            throw new IllegalStateException("You can only add friends to the group");
+        }
+
+        if (groupMemberRepository.findByGroupIdAndUserId(groupId, userToAddId).isPresent()) {
             throw new IllegalArgumentException("User is already a member of this group");
         }
 
-        User newUser = userRepository.findById(request.userId())
+        User newUser = userRepository.findById(userToAddId)
                 .orElseThrow(() -> new ResourceNotFoundException("User to add not found"));
 
         GroupMember member = new GroupMember();
         member.setUser(newUser);
         member.setGroup(group);
         member.setRole(GroupRole.MEMBER);
+
         groupMemberRepository.save(member);
     }
 
@@ -160,8 +169,6 @@ public class GroupService {
         if (currentAdminId.equals(newAdminId)) {
             throw new IllegalArgumentException("You cannot transfer the admin role to yourself.");
         }
-
-        Group group = getGroupIfAdmin(currentAdminId, groupId);
 
         GroupMember currentAdminMember = groupMemberRepository.findByGroupIdAndUserId(groupId, currentAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("Current admin member not found"));
