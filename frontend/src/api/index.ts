@@ -7,9 +7,15 @@ export { CancelablePromise, CancelError } from './core/CancelablePromise';
 export { OpenAPI } from './core/OpenAPI';
 export type { OpenAPIConfig } from './core/OpenAPI';
 
+export type { AddMemberRequest } from './models/AddMemberRequest';
 export type { AuthResponse } from './models/AuthResponse';
 export type { FriendRequestDetails } from './models/FriendRequestDetails';
 export type { Friendship } from './models/Friendship';
+export type { GroupCreateRequest } from './models/GroupCreateRequest';
+export type { GroupDetailsResponse } from './models/GroupDetailsResponse';
+export type { GroupMemberResponse } from './models/GroupMemberResponse';
+export type { GroupResponse } from './models/GroupResponse';
+export type { GroupUpdateRequest } from './models/GroupUpdateRequest';
 export type { LoginRequest } from './models/LoginRequest';
 export type { RefreshRequest } from './models/RefreshRequest';
 export type { RegisterRequest } from './models/RegisterRequest';
@@ -21,5 +27,6 @@ export type { UserSummary } from './models/UserSummary';
 
 export { AuthControllerService } from './services/AuthControllerService';
 export { FriendsService } from './services/FriendsService';
+export { GroupControllerService } from './services/GroupControllerService';
 export { HealthControllerService } from './services/HealthControllerService';
 export { UserControllerService } from './services/UserControllerService';

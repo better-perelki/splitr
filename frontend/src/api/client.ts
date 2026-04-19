@@ -5,12 +5,16 @@ import axios, {
     type AxiosError,
     AxiosHeaders,
 } from 'axios'
+import { OpenAPI } from './core/OpenAPI'
 
 const TOKEN_KEY = 'splitr_access_token'
 const REFRESH_KEY = 'splitr_refresh_token'
 
 let accessToken: string | null = localStorage.getItem(TOKEN_KEY)
 let refreshToken: string | null = localStorage.getItem(REFRESH_KEY)
+
+// Sync OpenAPI token on initial load so generated services are authenticated
+OpenAPI.TOKEN = accessToken ?? undefined
 let onLogout: (() => void) | null = null
 
 export function setTokens(access: string, refresh: string) {
@@ -18,6 +22,7 @@ export function setTokens(access: string, refresh: string) {
     refreshToken = refresh
     localStorage.setItem(TOKEN_KEY, access)
     localStorage.setItem(REFRESH_KEY, refresh)
+    OpenAPI.TOKEN = access
 }
 
 export function getAccessToken() {
@@ -33,6 +38,7 @@ export function clearTokens() {
     refreshToken = null
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_KEY)
+    OpenAPI.TOKEN = undefined
 }
 
 export function setLogoutHandler(handler: () => void) {

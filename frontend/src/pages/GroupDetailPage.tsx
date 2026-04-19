@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import GroupModal from '../components/GroupModal'
 import GroupMembersManager from '../components/GroupMembersManager'
 import { groupsApi, type GroupDetailsResponse, type GroupUpdateRequest, type GroupMemberResponse } from '../api/groups'
+import { useAuth } from '../contexts/AuthContext'
 
 type TabType = 'expenses' | 'balances' | 'analytics' | 'members'
 
@@ -49,8 +50,10 @@ export default function GroupDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('expenses')
   const [showEditModal, setShowEditModal] = useState(false)
   const [loading, setLoading] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
 
-  const currentUserId = localStorage.getItem('userId') || ''
+  const { user } = useAuth()
+  const currentUserId = user?.id || ''
 
   const currentUserRole = group?.members.find(m => m.user.id === currentUserId)?.role || 'MEMBER'
 
@@ -123,9 +126,13 @@ export default function GroupDetailPage() {
                   {group.members.slice(0, 3).map((m: GroupMemberResponse) => (
                       <div
                           key={m.user.id}
-                          className="w-10 h-10 rounded-full border-2 border-surface bg-surface-variant flex items-center justify-center text-xs font-bold text-on-surface-variant"
+                          className="w-10 h-10 rounded-full border-2 border-surface bg-surface-container-high ring-2 ring-primary/30 flex items-center justify-center text-xs font-bold text-primary shadow-lg overflow-hidden"
                       >
-                        {m.user.username[0].toUpperCase()}
+                        {m.user.avatarUrl ? (
+                            <img src={m.user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            m.user.username[0].toUpperCase()
+                        )}
                       </div>
                   ))}
                   {group.members.length > 3 && (
@@ -184,7 +191,7 @@ export default function GroupDetailPage() {
         </div>
 
         {/* Content */}
-        <div className="px-12 py-10 grid grid-cols-12 gap-10">
+        <div ref={contentRef} className="px-12 py-10 grid grid-cols-12 gap-10">
           {/* Main content area */}
           <div className="col-span-8 space-y-12">
 
@@ -196,6 +203,7 @@ export default function GroupDetailPage() {
                       members={group.members}
                       currentUserId={currentUserId}
                       currentUserRole={currentUserRole}
+                      onMemberAdded={fetchGroupDetails}
                       onMemberRemoved={fetchGroupDetails}
                       onGroupLeft={() => navigate('/groups')}
                       onGroupDeleted={() => navigate('/groups')}
@@ -219,7 +227,7 @@ export default function GroupDetailPage() {
                               >
                                 <div className="flex items-center gap-6">
                                   <div className="relative">
-                                    <div className="w-12 h-12 rounded-full bg-surface-variant ring-2 ring-primary/20 flex items-center justify-center text-sm font-bold text-on-surface-variant">
+                                    <div className="w-12 h-12 rounded-full bg-surface-container-high border-2 border-primary/20 flex items-center justify-center text-sm font-bold text-primary shadow-inner">
                                       {item.payer[0]}
                                     </div>
                                     <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-surface-container-high rounded-full flex items-center justify-center text-xs border border-white/5">
@@ -279,14 +287,14 @@ export default function GroupDetailPage() {
                   {mockBalances.map((b) => (
                       <div key={`${b.from}-${b.to}`} className="bg-surface-container-low p-6 rounded-2xl flex items-center justify-between group hover:bg-surface-container transition-all">
                         <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-sm font-bold">
+                          <div className="w-10 h-10 rounded-full bg-surface-container-high border-2 border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
                             {b.from[0]}
                           </div>
                           <div className="flex flex-col items-center">
                             <Icon name="arrow_forward" className="text-primary text-sm" />
                             <span className="text-[9px] text-on-surface-variant uppercase tracking-wider">pays</span>
                           </div>
-                          <div className="w-10 h-10 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-sm font-bold">
+                          <div className="w-10 h-10 rounded-full bg-surface-container-high border-2 border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
                             {b.to[0]}
                           </div>
                           <div className="ml-2">
@@ -328,14 +336,14 @@ export default function GroupDetailPage() {
                         className="flex items-center justify-between group"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-[10px] font-bold">
+                        <div className="w-8 h-8 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary">
                           {b.from[0]}
                         </div>
                         <Icon
                             name="arrow_forward"
                             className="text-on-surface-variant text-sm"
                         />
-                        <div className="w-8 h-8 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-[10px] font-bold">
+                        <div className="w-8 h-8 rounded-full bg-surface-container-high border border-primary/30 flex items-center justify-center text-[10px] font-bold text-primary">
                           {b.to[0]}
                         </div>
                       </div>
@@ -375,17 +383,26 @@ export default function GroupDetailPage() {
               <h4 className="font-headline text-sm font-bold mb-6 uppercase tracking-widest text-on-surface-variant flex items-center justify-between">
                 <span>Members ({group.members.length})</span>
                 <button
-                    onClick={() => setActiveTab('members')}
-                    className="text-xs text-primary hover:underline font-bold tracking-wider"
+                    onClick={() => {
+                        setActiveTab('members')
+                        setTimeout(() => {
+                            contentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }, 50)
+                    }}
+                    className="text-[10px] text-primary hover:underline font-bold tracking-widest bg-primary/10 px-3 py-1 rounded-lg transition-all active:scale-95"
                 >
                   Manage
                 </button>
               </h4>
               <div className="space-y-3">
                 {group.members.slice(0, 5).map((m: GroupMemberResponse) => (
-                    <div key={m.user.id} className="flex items-center gap-3 p-2 rounded-xl bg-surface-container-lowest">
-                      <div className="w-9 h-9 rounded-full bg-surface-variant border border-primary/20 flex items-center justify-center text-xs font-bold text-on-surface-variant">
-                        {m.user.username[0].toUpperCase()}
+                    <div key={m.user.id} className="flex items-center gap-3 p-2 rounded-2xl bg-surface-container-low/40 border border-white/[0.02] hover:bg-surface-container-low transition-all">
+                      <div className="w-9 h-9 rounded-full bg-surface-container-high border-2 border-primary/20 flex items-center justify-center text-xs font-bold text-primary overflow-hidden flex-shrink-0">
+                        {m.user.avatarUrl ? (
+                            <img src={m.user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                            m.user.username[0].toUpperCase()
+                        )}
                       </div>
                       <div>
                         <p className="font-bold text-sm text-on-surface">{m.user.username}</p>

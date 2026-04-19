@@ -81,6 +81,23 @@ export class FriendsService {
         });
     }
     /**
+     * @returns string OK
+     * @throws ApiError
+     */
+    public static autoConnect({
+        userId,
+    }: {
+        userId: string,
+    }): CancelablePromise<'SUCCESS' | 'ALREADY_FRIENDS'> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/friends/auto-connect/{userId}',
+            path: {
+                'userId': userId,
+            },
+        });
+    }
+    /**
      * Get friends list with balances
      * @returns Friendship OK
      * @throws ApiError
