@@ -19,15 +19,15 @@ interface GroupMembersManagerProps {
 }
 
 export default function GroupMembersManager({
-                                                groupId,
-                                                members,
-                                                currentUserId,
-                                                currentUserRole,
-                                                onMemberAdded,
-                                                onMemberRemoved,
-                                                onGroupLeft,
-                                                onGroupDeleted
-                                            }: GroupMembersManagerProps) {
+    groupId,
+    members,
+    currentUserId,
+    currentUserRole,
+    onMemberAdded,
+    onMemberRemoved,
+    onGroupLeft,
+    onGroupDeleted
+}: GroupMembersManagerProps) {
     const [loadingId, setLoadingId] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
@@ -140,23 +140,21 @@ export default function GroupMembersManager({
     return (
         <div className="bg-surface-container rounded-3xl p-6 border border-outline-variant/20 shadow-sm relative">
 
-            {/* Zmieniony Header z przyciskiem Add Friend */}
-            <div className="flex items-center justify-between mb-6">
-                <h3 className="font-headline text-xl font-bold tracking-tight text-on-surface">
-                    Group Members & Settings
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
+                    Members & Settings
                 </h3>
 
                 {currentUserRole === 'ADMIN' && (
                     <button
                         onClick={() => setShowAddFriend(!showAddFriend)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-                            showAddFriend
-                                ? 'bg-surface-container-highest text-on-surface-variant'
-                                : 'bg-primary/10 text-primary hover:bg-primary/20'
-                        }`}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl text-sm font-bold transition-all shadow-lg active:scale-95 ${showAddFriend
+                            ? 'bg-surface-container-highest text-on-surface-variant'
+                            : 'bg-primary text-on-primary hover:brightness-110 shadow-primary/20'
+                            }`}
                     >
-                        <Icon name={showAddFriend ? 'close' : 'person_add'} />
-                        {showAddFriend ? 'Cancel' : 'Add Friend'}
+                        <Icon name={showAddFriend ? 'close' : 'group_add'} />
+                        {showAddFriend ? 'Cancel' : 'Add'}
                     </button>
                 )}
             </div>
@@ -170,31 +168,36 @@ export default function GroupMembersManager({
 
             {/* Nowa sekcja: Lista znajomych */}
             {showAddFriend && (
-                <div className="mb-6 p-4 bg-surface-container-highest/30 rounded-2xl border border-primary/20">
-                    <h4 className="text-sm font-bold text-on-surface mb-3 uppercase tracking-wider">Select a friend to add</h4>
+                <div className="mb-8 p-6 bg-surface-container-low/40 rounded-3xl border border-primary/20 backdrop-blur-sm animate-fadeIn">
+                    <h4 className="text-xs font-bold text-primary mb-4 uppercase tracking-widest">Select to invite</h4>
 
                     {loadingFriends ? (
-                        <div className="flex justify-center p-4">
-                            <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        <div className="flex justify-center p-8">
+                            <span className="w-8 h-8 border-3 border-primary/20 border-t-primary rounded-full animate-spin" />
                         </div>
                     ) : availableFriends.length === 0 ? (
-                        <p className="text-sm text-on-surface-variant text-center p-2">
-                            All your friends are already in this group, or you don't have any friends yet.
-                        </p>
+                        <div className="text-center p-6 space-y-2">
+                            <Icon name="person_off" className="text-3xl text-on-surface-variant/20" />
+                            <p className="text-sm text-on-surface-variant">
+                                No friends available to invite.
+                            </p>
+                        </div>
                     ) : (
-                        <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                        <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
                             {availableFriends.map(f => (
-                                <div key={f.user!.id} className="flex items-center justify-between p-3 ...">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-primary/20 ...">
+                                <div key={f.user!.id} className="flex items-center justify-between p-3 rounded-2xl hover:bg-primary/5 border border-transparent hover:border-primary/10 transition-all group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-surface-container-high border-2 border-primary/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
                                             {f.user!.avatarUrl ? (
-                                                <img src={f.user!.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+                                                <img src={f.user!.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                                             ) : (
-                                                f.user!.username?.charAt(0).toUpperCase() ?? '?'
+                                                <span className="text-sm font-bold text-primary">
+                                                    {f.user!.username?.charAt(0).toUpperCase() ?? '?'}
+                                                </span>
                                             )}
                                         </div>
                                         <div>
-                                            <div className="font-bold text-on-surface text-sm">
+                                            <div className="font-bold text-on-surface text-sm group-hover:text-primary transition-colors">
                                                 {f.user!.username ?? 'Unknown'}
                                             </div>
                                             {f.user!.email && (
@@ -205,9 +208,9 @@ export default function GroupMembersManager({
                                     <button
                                         onClick={() => handleAddMember(f.user!.id!)}
                                         disabled={loadingId !== null}
-                                        className="text-xs px-4 py-2 bg-primary text-on-primary font-bold rounded-lg ..."
+                                        className="text-xs px-4 py-2 bg-primary/10 text-primary hover:bg-primary hover:text-on-primary font-bold rounded-xl transition-all active:scale-95 disabled:opacity-50"
                                     >
-                                        {loadingId === `add-${f.user!.id}` ? 'Adding...' : 'Add'}
+                                        {loadingId === `add-${f.user!.id}` ? '...' : 'Invite'}
                                     </button>
                                 </div>
                             ))}
@@ -225,24 +228,28 @@ export default function GroupMembersManager({
                     return (
                         <div
                             key={member.user.id}
-                            className="flex items-center justify-between p-4 bg-surface-container-highest/40 rounded-2xl border border-outline-variant/10"
+                            className="flex items-center justify-between p-4 bg-surface-container-low/40 rounded-3xl border border-outline-variant/10 hover:border-primary/5 transition-all"
                         >
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-lg">
+                            <div className="flex items-center gap-5">
+                                <div className="w-12 h-12 rounded-full bg-surface-container-high border-2 border-primary/30 flex-shrink-0 flex items-center justify-center overflow-hidden">
                                     {member.user.avatarUrl ? (
-                                        <img src={member.user.avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+                                        <img src={member.user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                                     ) : (
-                                        member.user.username.charAt(0).toUpperCase()
+                                        <span className="text-lg font-bold text-primary">
+                                            {member.user.username.charAt(0).toUpperCase()}
+                                        </span>
                                     )}
                                 </div>
 
                                 <div>
-                                    <div className="font-bold text-on-surface flex items-center gap-2">
+                                    <div className="font-bold text-on-surface flex items-center gap-3">
                                         {member.user.username}
-                                        {isMe && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-md uppercase tracking-wider">You</span>}
-                                        {isTargetAdmin && <span className="text-[10px] bg-tertiary/10 text-tertiary px-2 py-0.5 rounded-md uppercase tracking-wider flex items-center gap-1"><Icon name="shield" className="text-[10px]" /> Admin</span>}
+                                        <div className="flex items-center gap-1.5">
+                                            {isMe && <span className="text-[9px] bg-primary/20 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">You</span>}
+                                            {isTargetAdmin && <span className="text-[9px] bg-tertiary/10 text-tertiary border border-tertiary/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-widest flex items-center gap-1"><Icon name="verified" className="text-[10px]" /> Admin</span>}
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-on-surface-variant">{member.user.email}</div>
+                                    <div className="text-xs text-on-surface-variant/70">{member.user.email}</div>
                                 </div>
                             </div>
 
@@ -292,29 +299,33 @@ export default function GroupMembersManager({
                         </>
                     )}
                 </button>
-                <p className="text-xs text-on-surface-variant mt-2 max-w-sm">
+                <p className="text-xs text-on-surface-variant/60 mt-2 max-w-2xl leading-relaxed">
                     You can only leave the group if all your debts are settled. If you are the only admin, you must transfer your role first.
                 </p>
             </div>
 
             {/* USUWANIE GRUPY (TYLKO DLA ADMINA) */}
             {currentUserRole === 'ADMIN' && (
-                <div className="mt-6 pt-6 border-t border-error/20 bg-error/5 -mx-6 -mb-6 p-6 rounded-b-3xl">
-                    <h4 className="text-sm font-bold text-error mb-4 flex items-center gap-2">
-                        <Icon name="warning" />
-                        Danger Zone
-                    </h4>
+                <div className="mt-8 pt-8 border-t border-error/10 bg-error/[0.02] -mx-6 -mb-6 p-6 rounded-b-3xl">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center text-error">
+                            <Icon name="warning" className="text-lg" />
+                        </div>
+                        <h4 className="text-sm font-bold text-error uppercase tracking-widest">
+                            Danger Zone
+                        </h4>
+                    </div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <p className="text-xs text-on-surface-variant max-w-sm">
+                        <p className="text-xs text-on-surface-variant/70 max-w-sm leading-relaxed">
                             Permanently delete this group and all its data. This action cannot be undone. All debts must be settled before deletion.
                         </p>
                         <button
                             onClick={handleDeleteGroup}
                             disabled={loadingId === 'delete-group'}
-                            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-error text-on-primary font-bold hover:brightness-110 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+                            className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-error/10 text-error border border-error/20 font-bold hover:bg-error hover:text-on-error transition-all active:scale-95 disabled:opacity-50 shrink-0"
                         >
                             {loadingId === 'delete-group' ? (
-                                <span className="w-5 h-5 border-2 border-on-primary/30 border-t-on-primary rounded-full animate-spin" />
+                                <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
                             ) : (
                                 <>
                                     <Icon name="delete_forever" />
