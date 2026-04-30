@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { searchUsers, type User } from '../api/services/users'
+import { UserControllerService, FriendsService, type UserSearchResponse } from '../api'
 import Icon from './Icon'
-import api from '../api/client'
 import { MyQrCode } from './MyQrCode'
 import { ScanQr } from './ScanQr'
 import { parseQr } from '../utils/qrUtils'
@@ -28,7 +27,7 @@ export default function AddFriendModal({
 }: Props) {
     const [tab, setTab] = useState<Tab>('search')
     const [query, setQuery] = useState('')
-    const [results, setResults] = useState<User[]>([])
+    const [results, setResults] = useState<UserSearchResponse[]>([])
     const [loading, setLoading] = useState(false)
     const [sending, setSending] = useState<string | null>(null)
     const [sentUsernames, setSentUsernames] = useState<Set<string>>(new Set())
@@ -50,8 +49,8 @@ export default function AddFriendModal({
         const timeout = setTimeout(async () => {
             setLoading(true)
             try {
-                const users = await searchUsers(query)
-                setResults(users.filter(u => u.id !== userId))
+                const users = await UserControllerService.search({ q: query })
+                setResults(users.filter((u: UserSearchResponse) => u.id !== userId))
             } catch {
                 setResults([])
             } finally {
@@ -64,13 +63,11 @@ export default function AddFriendModal({
 
     if (!open) return null
 
-    const handleAdd = async (user: User) => {
+    const handleAdd = async (user: UserSearchResponse) => {
         try {
-            setSending(user.id)
-            await api.post('/friends/request/by-username', null, {
-                params: { username: user.username },
-            })
-            setSentUsernames(prev => new Set(prev).add(user.username))
+            setSending(user.id!)
+            await FriendsService.sendByUsername({ username: user.username! })
+            setSentUsernames(prev => new Set(prev).add(user.username!))
             refreshFriends()
         } catch {
             alert('Failed to send friend request')
@@ -89,9 +86,9 @@ export default function AddFriendModal({
         }
     }
 
-    const getStatus = (user: User): RelationStatus => {
-        if (sentUsernames.has(user.username)) return 'PENDING_SENT'
-        return getRelationStatus(user.username)
+    const getStatus = (user: UserSearchResponse): RelationStatus => {
+        if (user.username && sentUsernames.has(user.username)) return 'PENDING_SENT'
+        return getRelationStatus(user.username || '')
     }
 
     const statusBadge = (status: RelationStatus) => {
@@ -206,7 +203,7 @@ export default function AddFriendModal({
                                                     <img src={user.avatarUrl} className="w-10 h-10 object-cover" alt="" />
                                                 ) : (
                                                     <span className="text-xs font-bold text-on-surface-variant uppercase">
-                                                        {user.username[0]}
+                                                        {user.username?.[0] || '?'}
                                                     </span>
                                                 )}
                                             </div>

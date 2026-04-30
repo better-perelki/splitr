@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -239,5 +238,9 @@ public class FriendService {
         }
 
         friendRequestRepository.delete(fr);
+    }
+
+    public boolean areFriends(UUID userId1, UUID userId2) {
+        return friendRequestRepository.existsByUsersAndStatus(userId1, userId2, FriendRequestStatus.ACCEPTED);
     }
 }
