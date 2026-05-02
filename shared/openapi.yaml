@@ -1,10 +1,13 @@
 openapi: 3.1.0
 info:
-  title: OpenAPI definition
-  version: v0
+  title: Splitr API
+  description: Expense splitting application API
+  version: "1.0"
 servers:
 - url: http://localhost:8080
   description: Generated server url
+security:
+- Bearer Auth: []
 tags:
 - name: Friends
   description: Operations for managing friends and friend requests
@@ -38,6 +41,120 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserProfileResponse"
+  /api/groups/{id}:
+    get:
+      tags:
+      - group-controller
+      operationId: getGroupDetails
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GroupDetailsResponse"
+    put:
+      tags:
+      - group-controller
+      operationId: updateGroup
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+    delete:
+      tags:
+      - group-controller
+      operationId: deleteGroup
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/expenses/{id}:
+    get:
+      tags:
+      - expense-controller
+      operationId: get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
+    put:
+      tags:
+      - expense-controller
+      operationId: update
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdateRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
+    delete:
+      tags:
+      - expense-controller
+      operationId: delete
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/users/me/avatar:
     post:
       tags:
@@ -61,6 +178,151 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/UserProfileResponse"
+  /api/groups:
+    get:
+      tags:
+      - group-controller
+      operationId: getUserGroups
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GroupResponse"
+    post:
+      tags:
+      - group-controller
+      operationId: createGroup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+  /api/groups/{id}/transfer-admin/{newAdminId}:
+    post:
+      tags:
+      - group-controller
+      operationId: transferAdminRole
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: newAdminId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/groups/{id}/members:
+    post:
+      tags:
+      - group-controller
+      operationId: addMember
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddMemberRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+  /api/groups/{id}/leave:
+    post:
+      tags:
+      - group-controller
+      operationId: leaveGroup
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+  /api/groups/{groupId}/expenses:
+    get:
+      tags:
+      - expense-controller
+      operationId: list
+      parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PagedExpenseResponse"
+    post:
+      tags:
+      - expense-controller
+      operationId: create
+      parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
   /api/friends/request:
     post:
       tags:
@@ -123,6 +385,58 @@ paths:
       responses:
         "200":
           description: OK
+  /api/friends/auto-connect/{userId}:
+    post:
+      tags:
+      - Friends
+      operationId: autoConnect
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+                enum:
+                - SUCCESS
+                - ALREADY_FRIENDS
+  /api/expenses/{id}/attachments:
+    post:
+      tags:
+      - expense-controller
+      operationId: uploadReceipt
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+              required:
+              - file
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ExpenseResponse"
   /api/auth/register:
     post:
       tags:
@@ -177,6 +491,25 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/AuthResponse"
+  /api/users/summary/{id}:
+    get:
+      tags:
+      - user-controller
+      operationId: getUserSummary
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/UserSummary"
   /api/users/search:
     get:
       tags:
@@ -188,6 +521,20 @@ paths:
         required: true
         schema:
           type: string
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
       responses:
         "200":
           description: OK
@@ -197,6 +544,35 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/UserSearchResponse"
+  /api/users/all:
+    get:
+      tags:
+      - user-controller
+      operationId: getAllUsers
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 0
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
   /api/health:
     get:
       tags:
@@ -256,6 +632,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/FriendRequestDetails"
+  /api/groups/{id}/members/{userId}:
+    delete:
+      tags:
+      - group-controller
+      operationId: removeMember
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/friends/{id}:
     delete:
       tags:
@@ -330,6 +727,288 @@ components:
         createdAt:
           type: string
           format: date-time
+    GroupUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        icon:
+          type: string
+        currency:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+          - TRIP
+          - APARTMENT
+          - EVENT
+          - OTHER
+      required:
+      - type
+    GroupResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        icon:
+          type: string
+        currency:
+          type: string
+        type:
+          type: string
+          enum:
+          - TRIP
+          - APARTMENT
+          - EVENT
+          - OTHER
+        balance:
+          type: number
+    ExpenseUpdateRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+          maxLength: 255
+          minLength: 0
+        expenseDate:
+          type: string
+          format: date
+        category:
+          type: string
+          enum:
+          - FOOD
+          - TRANSPORT
+          - ACCOMMODATION
+          - ENTERTAINMENT
+          - SHOPPING
+          - UTILITIES
+          - OTHER
+        splitType:
+          type: string
+          enum:
+          - EQUAL
+          - PERCENTAGE
+          - EXACT
+          - SHARES
+          - ADJUSTMENT
+        payers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayerInput"
+          minItems: 1
+        splits:
+          type: array
+          items:
+            $ref: "#/components/schemas/SplitInput"
+          minItems: 1
+        notes:
+          type: string
+      required:
+      - amount
+      - category
+      - expenseDate
+      - splitType
+    PayerInput:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+      required:
+      - amount
+      - userId
+    SplitInput:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        share:
+          type: number
+        percentage:
+          type: number
+        adjustment:
+          type: number
+      required:
+      - userId
+    ExpensePayerResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        amount:
+          type: number
+    ExpenseResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        description:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+        category:
+          type: string
+          enum:
+          - FOOD
+          - TRANSPORT
+          - ACCOMMODATION
+          - ENTERTAINMENT
+          - SHOPPING
+          - UTILITIES
+          - OTHER
+        expenseDate:
+          type: string
+          format: date
+        splitType:
+          type: string
+          enum:
+          - EQUAL
+          - PERCENTAGE
+          - EXACT
+          - SHARES
+          - ADJUSTMENT
+        receiptUrl:
+          type: string
+        notes:
+          type: string
+        createdBy:
+          $ref: "#/components/schemas/UserSummary"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        payers:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpensePayerResponse"
+        splits:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpenseSplitResponse"
+    ExpenseSplitResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        amount:
+          type: number
+        share:
+          type: number
+        percentage:
+          type: number
+        adjustment:
+          type: number
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+        avatarUrl:
+          type: string
+    GroupCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        icon:
+          type: string
+        currency:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum:
+          - TRIP
+          - APARTMENT
+          - EVENT
+          - OTHER
+      required:
+      - type
+    AddMemberRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+      required:
+      - userId
+    ExpenseCreateRequest:
+      type: object
+      properties:
+        amount:
+          type: number
+        currency:
+          type: string
+        description:
+          type: string
+          maxLength: 255
+          minLength: 0
+        expenseDate:
+          type: string
+          format: date
+        category:
+          type: string
+          enum:
+          - FOOD
+          - TRANSPORT
+          - ACCOMMODATION
+          - ENTERTAINMENT
+          - SHOPPING
+          - UTILITIES
+          - OTHER
+        splitType:
+          type: string
+          enum:
+          - EQUAL
+          - PERCENTAGE
+          - EXACT
+          - SHARES
+          - ADJUSTMENT
+        payers:
+          type: array
+          items:
+            $ref: "#/components/schemas/PayerInput"
+          minItems: 1
+        splits:
+          type: array
+          items:
+            $ref: "#/components/schemas/SplitInput"
+          minItems: 1
+        notes:
+          type: string
+      required:
+      - amount
+      - category
+      - expenseDate
+      - splitType
     SendFriendRequest:
       type: object
       properties:
@@ -389,6 +1068,60 @@ components:
           type: string
         avatarUrl:
           type: string
+    GroupDetailsResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        icon:
+          type: string
+        currency:
+          type: string
+        type:
+          type: string
+          enum:
+          - TRIP
+          - APARTMENT
+          - EVENT
+          - OTHER
+        balance:
+          type: number
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupMemberResponse"
+    GroupMemberResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSearchResponse"
+        role:
+          type: string
+          enum:
+          - ADMIN
+          - MEMBER
+        joinedAt:
+          type: string
+          format: date-time
+    PagedExpenseResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpenseResponse"
+        page:
+          type: integer
+          format: int32
+        size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
     Friendship:
       type: object
       properties:
@@ -399,18 +1132,6 @@ components:
           $ref: "#/components/schemas/UserSummary"
         balance:
           type: number
-    UserSummary:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        username:
-          type: string
-        email:
-          type: string
-        avatarUrl:
-          type: string
     FriendRequestDetails:
       type: object
       properties:
@@ -430,3 +1151,9 @@ components:
         createdAt:
           type: string
           format: date-time
+  securitySchemes:
+    Bearer Auth:
+      type: http
+      name: Bearer Auth
+      scheme: bearer
+      bearerFormat: JWT
