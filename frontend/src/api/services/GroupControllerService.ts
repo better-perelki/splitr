@@ -3,10 +3,13 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { AddMemberRequest } from '../models/AddMemberRequest';
+import type { GroupBalanceResponse } from '../models/GroupBalanceResponse';
 import type { GroupCreateRequest } from '../models/GroupCreateRequest';
 import type { GroupDetailsResponse } from '../models/GroupDetailsResponse';
 import type { GroupResponse } from '../models/GroupResponse';
 import type { GroupUpdateRequest } from '../models/GroupUpdateRequest';
+import type { SettlementCreateRequest } from '../models/SettlementCreateRequest';
+import type { SettlementResponse } from '../models/SettlementResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -113,6 +116,44 @@ export class GroupControllerService {
         });
     }
     /**
+     * @returns SettlementResponse OK
+     * @throws ApiError
+     */
+    public static listSettlements({
+        id,
+    }: {
+        id: string,
+    }): CancelablePromise<Array<SettlementResponse>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/groups/{id}/settlements',
+            path: {
+                'id': id,
+            },
+        });
+    }
+    /**
+     * @returns SettlementResponse Created
+     * @throws ApiError
+     */
+    public static createSettlement({
+        id,
+        requestBody,
+    }: {
+        id: string,
+        requestBody: SettlementCreateRequest,
+    }): CancelablePromise<SettlementResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/groups/{id}/settlements',
+            path: {
+                'id': id,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+        });
+    }
+    /**
      * @returns any Created
      * @throws ApiError
      */
@@ -145,6 +186,23 @@ export class GroupControllerService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/groups/{id}/leave',
+            path: {
+                'id': id,
+            },
+        });
+    }
+    /**
+     * @returns GroupBalanceResponse OK
+     * @throws ApiError
+     */
+    public static getBalances({
+        id,
+    }: {
+        id: string,
+    }): CancelablePromise<GroupBalanceResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/groups/{id}/balances',
             path: {
                 'id': id,
             },

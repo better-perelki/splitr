@@ -7,11 +7,13 @@ import com.splitr.exception.UnauthorizedException;
 import com.splitr.repository.GroupMemberRepository;
 import com.splitr.repository.GroupRepository;
 import com.splitr.repository.UserRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,14 +25,18 @@ public class GroupService {
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
     private final FriendService friendService;
+    private final BalanceService balanceService;
 
     public GroupService(GroupRepository groupRepository,
                         GroupMemberRepository groupMemberRepository,
-                        UserRepository userRepository, FriendService friendService) {
+                        UserRepository userRepository,
+                        FriendService friendService,
+                        @Lazy BalanceService balanceService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.friendService = friendService;
+        this.balanceService = balanceService;
     }
 
     public GroupResponse createGroup(UUID userId, GroupCreateRequest request) {
@@ -51,20 +57,28 @@ public class GroupService {
         member.setRole(GroupRole.ADMIN);
         groupMemberRepository.save(member);
 
-        return mapToResponse(group);
+        // New group has no expenses, balance is zero
+        return mapToResponse(group, BigDecimal.ZERO);
     }
 
     @Transactional(readOnly = true)
     public List<GroupResponse> getUserGroups(UUID userId) {
         return groupMemberRepository.findByUserId(userId).stream()
-                .map(GroupMember::getGroup)
-                .map(this::mapToResponse)
+                .map(gm -> {
+                    Group group = gm.getGroup();
+                    Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(group.getId());
+                    BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
+                    return mapToResponse(group, userBalance);
+                })
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public GroupDetailsResponse getGroupDetails(UUID userId, UUID groupId) {
         Group group = getGroupIfAuthorized(userId, groupId);
+
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
 
         List<GroupMemberResponse> memberResponses = groupMemberRepository.findByGroupId(groupId).stream()
                 .map(m -> new GroupMemberResponse(
@@ -80,7 +94,7 @@ public class GroupService {
                 group.getIcon(),
                 group.getCurrency(),
                 group.getType(),
-                BigDecimal.ZERO, // Mocked balance
+                userBalance,
                 memberResponses
         );
     }
@@ -94,7 +108,10 @@ public class GroupService {
         group.setType(request.type());
 
         group = groupRepository.save(group);
-        return mapToResponse(group);
+
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
+        return mapToResponse(group, userBalance);
     }
 
     public void addMember(UUID currentUserId, UUID groupId, AddMemberRequest request) {
@@ -208,14 +225,14 @@ public class GroupService {
         return member.getGroup();
     }
 
-    private GroupResponse mapToResponse(Group group) {
+    private GroupResponse mapToResponse(Group group, BigDecimal userBalance) {
         return new GroupResponse(
                 group.getId(),
                 group.getName(),
                 group.getIcon(),
                 group.getCurrency(),
                 group.getType(),
-                BigDecimal.ZERO // Mocked balance
+                userBalance
         );
     }
 
@@ -229,17 +246,15 @@ public class GroupService {
         );
     }
 
-    // --- MOCKI BIZNESOWE DOT. ROZLICZEŃ (Do wdrożenia w połączeniu np. z ExpenseService/BalanceService) ---
-
     private boolean hasUserOutstandingBalances(UUID groupId, UUID userId) {
-        // TODO: Zaimplementuj logikę sprawdzającą, czy dany użytkownik jest na zero ze wszystkimi w grupie
-        // Zwróć true jeśli użytkownik jest komuś dłużny, lub ktoś jemu
-        return false;
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
+        return userBalance.abs().compareTo(new BigDecimal("0.01")) >= 0;
     }
 
     private boolean hasGroupOutstandingBalances(UUID groupId) {
-        // TODO: Zaimplementuj logikę sprawdzającą, czy ktokolwiek w grupie ma długi
-        // Zwróć true jeśli jakiekolwiek salda nie są równe 0
-        return false;
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        return netBalances.values().stream()
+                .anyMatch(balance -> balance.abs().compareTo(new BigDecimal("0.01")) >= 0);
     }
 }

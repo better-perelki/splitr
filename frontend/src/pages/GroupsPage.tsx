@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import GroupModal from '../components/GroupModal'
 import { groupsApi, type GroupResponse, type GroupCreateRequest, type GroupType } from '../api/groups'
+import { balancesApi, type GroupBalanceResponse } from '../api/balances'
+import { useAuth } from '../contexts/AuthContext'
 
 const TYPE_ICONS: Record<string, string> = {
   TRIP: 'landscape',
@@ -18,23 +20,29 @@ const TYPE_LABELS: Record<GroupType, string> = {
   OTHER: 'Other',
 }
 
-const MOCK_GROUPS: GroupResponse[] = [
-  { id: '1', name: 'Tatry 2025', icon: '🏔️', currency: 'PLN', type: 'TRIP', balance: 45 },
-  { id: '2', name: 'Współlokatorzy', icon: '🏠', currency: 'PLN', type: 'APARTMENT', balance: -320 },
-  { id: '3', name: 'Ślub Kaśki', icon: '🎉', currency: 'PLN', type: 'EVENT', balance: 0 },
-]
-
 export default function GroupsPage() {
   const navigate = useNavigate()
-  const [groups, setGroups] = useState<GroupResponse[]>(MOCK_GROUPS)
+  const { user } = useAuth()
+  const currentUserId = user?.id ?? ''
+  const [groups, setGroups] = useState<GroupResponse[]>([])
+  const [allBalances, setAllBalances] = useState<Map<string, GroupBalanceResponse>>(new Map())
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<GroupType | 'ALL'>('ALL')
 
   useEffect(() => {
     groupsApi.list()
-      .then(data => setGroups(data))
-      .catch(() => { /* keep mock data */ })
+      .then(data => {
+        setGroups(data)
+        data.forEach(g => {
+          balancesApi.get(g.id)
+            .then(b => {
+              setAllBalances(prev => new Map(prev).set(g.id, b))
+            })
+            .catch(() => { })
+        })
+      })
+      .catch(() => { })
   }, [])
 
   const handleCreateGroup = async (data: GroupCreateRequest) => {
@@ -53,22 +61,36 @@ export default function GroupsPage() {
     }
   }
 
+  const getGroupBalance = (groupId: string): number => {
+    const balance = allBalances.get(groupId)
+    if (!balance) return 0
+    const member = balance.memberBalances.find(m => m.user.id === currentUserId)
+    return member?.balance ?? 0
+  }
+
   const filtered = groups.filter(g => {
     const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase())
     const matchesType = filterType === 'ALL' || g.type === filterType
     return matchesSearch && matchesType
   })
 
-  const totalOwed = groups.reduce((sum, g) => sum + (g.balance > 0 ? g.balance : 0), 0)
-  const totalOwe = groups.reduce((sum, g) => sum + (g.balance < 0 ? Math.abs(g.balance) : 0), 0)
+  const { totalOwed, totalOwe } = useMemo(() => {
+    let owed = 0
+    let owe = 0
+    for (const [, balance] of allBalances.entries()) {
+      for (const debt of balance.simplifiedDebts) {
+        if (debt.from.id === currentUserId) owe += debt.amount
+        if (debt.to.id === currentUserId) owed += debt.amount
+      }
+    }
+    return { totalOwed: owed, totalOwe: owe }
+  }, [allBalances, currentUserId])
 
   return (
     <div className="p-12 min-h-screen relative overflow-hidden">
-      {/* Background glows */}
       <div className="fixed top-0 right-0 w-[500px] h-[500px] emerald-glow -z-10 opacity-40" />
       <div className="fixed bottom-0 left-64 w-[400px] h-[400px] emerald-glow -z-10 opacity-20" />
 
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface mb-2">
@@ -87,7 +109,6 @@ export default function GroupsPage() {
         </button>
       </div>
 
-      {/* Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
         <div className="glass-card p-5 rounded-2xl flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -118,7 +139,6 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Icon name="search" className="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg" />
@@ -147,7 +167,6 @@ export default function GroupsPage() {
         </div>
       </div>
 
-      {/* Groups Grid */}
       {filtered.length === 0 ? (
         <div className="glass-card p-16 rounded-2xl flex flex-col items-center justify-center text-center">
           <Icon name="search_off" className="text-5xl text-on-surface-variant/30 mb-4" />
@@ -156,62 +175,71 @@ export default function GroupsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map(group => (
-            <div
-              key={group.id}
-              onClick={() => navigate(`/groups/${group.id}`)}
-              className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-            >
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Icon name={TYPE_ICONS[group.type] ?? 'category'} className="text-6xl" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{group.icon ?? '📌'}</span>
+          {filtered.map(group => {
+            const bal = getGroupBalance(group.id)
+            return (
+              <div
+                key={group.id}
+                onClick={() => navigate(`/groups/${group.id}`)}
+                className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Icon name={TYPE_ICONS[group.type] ?? 'category'} className="text-6xl" />
+                </div>
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{group.icon ?? '📌'}</span>
+                      <div>
+                        <h4 className="font-headline font-bold text-lg">{group.name}</h4>
+                        <p className="text-xs text-on-surface-variant font-medium capitalize">
+                          {group.type.toLowerCase()}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
+                      {group.currency}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-end">
                     <div>
-                      <h4 className="font-headline font-bold text-lg">{group.name}</h4>
-                      <p className="text-xs text-on-surface-variant font-medium capitalize">
-                        {group.type.toLowerCase()}
+                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+                        Balance
+                      </p>
+                      <p
+                        className={`text-xl font-headline font-bold ${
+                          bal > 0.01
+                            ? 'text-primary'
+                            : bal < -0.01
+                              ? 'text-error'
+                              : 'text-on-surface'
+                        }`}
+                      >
+                        {bal > 0.01 ? '+' : ''}{bal.toFixed(2)} {group.currency}
                       </p>
                     </div>
-                  </div>
-                  <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
-                    {group.currency}
-                  </span>
-                </div>
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
-                      Balance
-                    </p>
-                    <p
-                      className={`text-xl font-headline font-bold ${
-                        group.balance > 0
-                          ? 'text-primary'
-                          : group.balance < 0
-                            ? 'text-error'
-                            : 'text-on-surface'
+                    <div
+                      onClick={(e) => {
+                        if (bal < -0.01 || bal > 0.01) {
+                          e.stopPropagation()
+                          navigate(`/groups/${group.id}?tab=balances`)
+                        }
+                      }}
+                      className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-lg transition-all ${
+                        bal > 0.01
+                          ? 'bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer'
+                          : bal < -0.01
+                            ? 'bg-error/10 text-error hover:bg-error/20 cursor-pointer'
+                            : 'bg-surface-container-highest text-on-surface-variant'
                       }`}
                     >
-                      {group.balance > 0 ? '+' : ''}{group.balance.toFixed(2)} {group.currency}
-                    </p>
-                  </div>
-                  <div
-                    className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-lg ${
-                      group.balance > 0
-                        ? 'bg-primary/10 text-primary'
-                        : group.balance < 0
-                          ? 'bg-error/10 text-error'
-                          : 'bg-surface-container-highest text-on-surface-variant'
-                    }`}
-                  >
-                    {group.balance > 0 ? "You're owed" : group.balance < 0 ? 'You owe' : 'Balanced'}
+                      {bal > 0.01 ? "You're owed" : bal < -0.01 ? 'You owe → Settle' : 'Balanced'}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import { useAuth } from '../contexts/AuthContext'
 import GroupModal from '../components/GroupModal'
 import { groupsApi, type GroupResponse, type GroupCreateRequest } from '../api/groups'
+import { balancesApi, type GroupBalanceResponse } from '../api/balances'
 
 const TYPE_ICONS: Record<string, string> = {
   TRIP: 'landscape',
@@ -12,31 +13,26 @@ const TYPE_ICONS: Record<string, string> = {
   OTHER: 'category',
 }
 
-const recentActivity = [
-  { name: 'Aleksandra', title: 'Dinner at Mamma Mia', icon: 'local_pizza', iconColor: 'text-orange-400', amount: '$42.00', status: 'owed', bg: 'bg-orange-900/30' },
-  { name: 'Marek', title: 'Airport Transfer', icon: 'local_taxi', iconColor: 'text-blue-400', amount: '$18.50', status: 'owe', bg: 'bg-blue-900/30' },
-  { name: 'Piotr', title: 'Weekly Groceries', icon: 'shopping_basket', iconColor: 'text-green-400', amount: '$82.50', status: 'owed', bg: 'bg-green-900/30' },
-  { name: 'Marek', title: 'Lunch Break', icon: 'restaurant', iconColor: 'text-purple-400', amount: '$12.00', status: 'owe', bg: 'bg-purple-900/30' },
-]
-
-// Fallback mock data when backend is unavailable
-const MOCK_GROUPS: GroupResponse[] = [
-  { id: '1', name: 'Tatry 2025', icon: '🏔️', currency: 'PLN', type: 'TRIP', balance: 45 },
-  { id: '2', name: 'Współlokatorzy', icon: '🏠', currency: 'PLN', type: 'APARTMENT', balance: -320 },
-  { id: '3', name: 'Ślub Kaśki', icon: '🎉', currency: 'PLN', type: 'EVENT', balance: 0 },
-]
-
 export default function DashboardPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [showGroupModal, setShowGroupModal] = useState(false)
-  const [groups, setGroups] = useState<GroupResponse[]>(MOCK_GROUPS)
+  const [groups, setGroups] = useState<GroupResponse[]>([])
+  const [allBalances, setAllBalances] = useState<Map<string, GroupBalanceResponse>>(new Map())
 
-  // Load groups from backend (fallback to mock if unavailable)
   useEffect(() => {
     groupsApi.list()
-      .then(data => { setGroups(data) })
-      .catch(() => { /* keep mock data */ })
+      .then(data => {
+        setGroups(data)
+        data.forEach(g => {
+          balancesApi.get(g.id)
+            .then(b => {
+              setAllBalances(prev => new Map(prev).set(g.id, b))
+            })
+            .catch(() => { })
+        })
+      })
+      .catch(() => { })
   }, [])
 
   const handleCreateGroup = async (data: GroupCreateRequest) => {
@@ -44,7 +40,6 @@ export default function DashboardPage() {
       const newGroup = await groupsApi.create(data)
       setGroups(prev => [...prev, newGroup])
     } catch {
-      // If backend is unavailable, add locally with mock id
       setGroups(prev => [...prev, {
         id: crypto.randomUUID(),
         name: data.name,
@@ -56,13 +51,45 @@ export default function DashboardPage() {
     }
   }
 
+  const currentUserId = user?.id ?? ''
+
+  const { totalOwed, totalOwe, recentDebts } = useMemo(() => {
+    let owed = 0
+    let owe = 0
+    const debts: { from: string; to: string; amount: number; currency: string; groupName: string; groupId: string; type: 'owe' | 'owed' }[] = []
+
+    for (const [groupId, balance] of allBalances.entries()) {
+      const group = groups.find(g => g.id === groupId)
+      const groupName = group?.name ?? 'Group'
+      const currency = group?.currency ?? 'PLN'
+
+      for (const debt of balance.simplifiedDebts) {
+        if (debt.from.id === currentUserId) {
+          owe += debt.amount
+          debts.push({ from: debt.from.username, to: debt.to.username, amount: debt.amount, currency, groupName, groupId, type: 'owe' })
+        }
+        if (debt.to.id === currentUserId) {
+          owed += debt.amount
+          debts.push({ from: debt.from.username, to: debt.to.username, amount: debt.amount, currency, groupName, groupId, type: 'owed' })
+        }
+      }
+    }
+
+    return { totalOwed: owed, totalOwe: owe, recentDebts: debts.slice(0, 5) }
+  }, [allBalances, groups, currentUserId])
+
+  const getGroupBalance = (groupId: string): number => {
+    const balance = allBalances.get(groupId)
+    if (!balance) return 0
+    const member = balance.memberBalances.find(m => m.user.id === currentUserId)
+    return member?.balance ?? 0
+  }
+
   return (
     <div className="p-12 min-h-screen relative overflow-hidden">
-      {/* Background glow */}
       <div className="fixed top-0 right-0 w-[500px] h-[500px] emerald-glow -z-10 opacity-40" />
       <div className="fixed bottom-0 left-64 w-[400px] h-[400px] emerald-glow -z-10 opacity-20" />
 
-      {/* Greeting */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h2 className="font-headline text-4xl font-bold tracking-tight text-on-surface mb-2">
@@ -72,76 +99,137 @@ export default function DashboardPage() {
             Here's your financial status for today.
           </p>
         </div>
-        <div className="flex items-center gap-4 bg-surface-container-low p-2 pr-6 rounded-full border border-primary/10">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <Icon name="trending_up" />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div className="relative overflow-hidden p-8 rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/5 via-transparent to-transparent glass-card group hover:scale-[1.01] transition-all duration-300">
+          <div className="absolute -top-16 -right-16 w-40 h-40 bg-primary/10 rounded-full blur-[60px] group-hover:blur-[80px] transition-all" />
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-primary/15 flex items-center justify-center">
+                  <Icon name="arrow_downward" className="text-primary" />
+                </div>
+                <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">
+                  Owed to you
+                </span>
+              </div>
+              <div className="font-headline text-4xl font-bold text-primary mb-2">
+                {totalOwed.toFixed(2)}
+              </div>
+              <p className="text-sm text-on-surface-variant">
+                {totalOwed > 0 ? 'across your groups' : 'No one owes you'}
+              </p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Icon name="trending_up" className="text-3xl text-primary" />
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold leading-none">
-              Net Balance
-            </p>
-            <p className="text-xl font-headline font-bold text-primary">
-              You are owed $124.50
-            </p>
+        </div>
+
+        <div className="relative overflow-hidden p-8 rounded-3xl border border-error/15 bg-gradient-to-br from-error/5 via-transparent to-transparent glass-card group hover:scale-[1.01] transition-all duration-300">
+          <div className="absolute -top-16 -right-16 w-40 h-40 bg-error/10 rounded-full blur-[60px] group-hover:blur-[80px] transition-all" />
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-2xl bg-error/15 flex items-center justify-center">
+                  <Icon name="arrow_upward" className="text-error" />
+                </div>
+                <span className="text-xs uppercase tracking-widest text-on-surface-variant font-bold">
+                  You owe
+                </span>
+              </div>
+              <div className="font-headline text-4xl font-bold text-error mb-2">
+                {totalOwe.toFixed(2)}
+              </div>
+              <p className="text-sm text-on-surface-variant">
+                {totalOwe > 0 ? 'across your groups' : "You're all settled!"}
+              </p>
+            </div>
+            <div className="w-14 h-14 rounded-2xl bg-error/10 border border-error/20 flex items-center justify-center">
+              <Icon name="trending_down" className="text-3xl text-error" />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-        {/* Recent Activity */}
         <section className="lg:col-span-7 space-y-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-headline text-xl font-bold tracking-tight">
-              Recent Activity
+              Outstanding Balances
             </h3>
-            <button className="text-xs font-bold text-primary uppercase tracking-widest hover:underline">
-              View All
-            </button>
           </div>
+          {recentDebts.length === 0 && (
+            <div className="glass-card p-10 rounded-2xl flex flex-col items-center text-on-surface-variant">
+              <Icon name="check_circle" className="text-5xl text-primary mb-4" />
+              <p className="font-headline font-bold text-lg text-on-surface mb-1">All settled up!</p>
+              <p className="text-sm opacity-60">No outstanding balances across your groups.</p>
+            </div>
+          )}
           <div className="space-y-4">
-            {recentActivity.map((entry, i) => (
+            {recentDebts.map((entry, i) => (
               <div
                 key={i}
-                className="glass-card p-5 rounded-2xl flex items-center justify-between group hover:bg-surface-container-high/60 transition-all duration-300"
+                onClick={() => navigate(`/groups/${entry.groupId}?tab=balances`)}
+                className="glass-card p-5 rounded-2xl flex items-center justify-between group hover:bg-surface-container-high/60 transition-all duration-300 cursor-pointer"
               >
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-12 h-12 rounded-full bg-surface-variant" />
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold ${
+                      entry.type === 'owed'
+                        ? 'bg-primary/10 border-2 border-primary/20 text-primary'
+                        : 'bg-error/10 border-2 border-error/20 text-error'
+                    }`}>
+                      {entry.type === 'owed' ? entry.from[0].toUpperCase() : entry.to[0].toUpperCase()}
+                    </div>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center">
-                      <Icon name={entry.icon} className={`text-[14px] ${entry.iconColor}`} />
+                      <Icon
+                        name={entry.type === 'owed' ? 'arrow_downward' : 'arrow_upward'}
+                        className={`text-[14px] ${entry.type === 'owed' ? 'text-primary' : 'text-error'}`}
+                      />
                     </div>
                   </div>
                   <div>
-                    <h4 className="font-bold text-on-surface">{entry.title}</h4>
+                    <h4 className="font-bold text-on-surface">
+                      {entry.type === 'owed' ? entry.from : entry.to}
+                    </h4>
                     <p className="text-sm text-on-surface-variant">
-                      with {entry.name}
+                      {entry.groupName}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p
-                    className={`font-headline font-bold text-lg ${
-                      entry.status === 'owed' ? 'text-primary' : 'text-error'
-                    }`}
-                  >
-                    {entry.amount}
-                  </p>
-                  <span
-                    className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded ${
-                      entry.status === 'owed'
-                        ? 'bg-primary/10 text-primary'
-                        : 'bg-error/10 text-error'
-                    }`}
-                  >
-                    {entry.status === 'owed' ? "You're owed" : 'You owe'}
-                  </span>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p
+                      className={`font-headline font-bold text-lg ${
+                        entry.type === 'owed' ? 'text-primary' : 'text-error'
+                      }`}
+                    >
+                      {entry.amount.toFixed(2)} {entry.currency}
+                    </p>
+                    <span
+                      className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded ${
+                        entry.type === 'owed'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-error/10 text-error'
+                      }`}
+                    >
+                      {entry.type === 'owed' ? "You're owed" : 'You owe'}
+                    </span>
+                  </div>
+                  {entry.type === 'owe' && (
+                    <div className="flex items-center gap-1 text-xs font-bold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                      Settle
+                      <Icon name="arrow_forward" className="text-sm" />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Groups */}
         <section className="lg:col-span-5 space-y-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-headline text-xl font-bold tracking-tight">
@@ -155,64 +243,81 @@ export default function DashboardPage() {
             </button>
           </div>
           <div className="grid grid-cols-1 gap-4">
-            {groups.map((group) => (
-              <div
-                key={group.id}
-                onClick={() => navigate(`/groups/${group.id}`)}
-                className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-              >
-                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Icon name={TYPE_ICONS[group.type] ?? 'category'} className="text-6xl" />
-                </div>
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{group.icon ?? '📌'}</span>
+            {groups.map((group) => {
+              const bal = getGroupBalance(group.id)
+              return (
+                <div
+                  key={group.id}
+                  onClick={() => navigate(`/groups/${group.id}`)}
+                  className="glass-card p-6 rounded-2xl border border-white/5 relative overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                >
+                  <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Icon name={TYPE_ICONS[group.type] ?? 'category'} className="text-6xl" />
+                  </div>
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{group.icon ?? '📌'}</span>
+                        <div>
+                          <h4 className="font-headline font-bold text-lg">
+                            {group.name}
+                          </h4>
+                          <p className="text-xs text-on-surface-variant font-medium capitalize">
+                            {group.type.toLowerCase()}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
+                        {group.currency}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-end">
                       <div>
-                        <h4 className="font-headline font-bold text-lg">
-                          {group.name}
-                        </h4>
-                        <p className="text-xs text-on-surface-variant font-medium capitalize">
-                          {group.type.toLowerCase()}
+                        <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
+                          Balance
+                        </p>
+                        <p
+                          className={`text-xl font-headline font-bold ${
+                            bal > 0.01
+                              ? 'text-primary'
+                              : bal < -0.01
+                                ? 'text-error'
+                                : 'text-on-surface'
+                          }`}
+                        >
+                          {bal > 0.01 ? '+' : ''}{bal.toFixed(2)} {group.currency}
                         </p>
                       </div>
-                    </div>
-                    <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
-                      {group.currency}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">
-                        Balance
-                      </p>
-                      <p
-                        className={`text-xl font-headline font-bold ${
-                          group.balance > 0
-                            ? 'text-primary'
-                            : group.balance < 0
-                              ? 'text-error'
-                              : 'text-on-surface'
+                      <div
+                        className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-lg ${
+                          bal > 0.01
+                            ? 'bg-primary/10 text-primary'
+                            : bal < -0.01
+                              ? 'bg-error/10 text-error'
+                              : 'bg-surface-container-highest text-on-surface-variant'
                         }`}
                       >
-                        {group.balance > 0 ? '+' : ''}{group.balance.toFixed(2)} {group.currency}
-                      </p>
-                    </div>
-                    <div
-                      className={`text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-lg ${
-                        group.balance > 0
-                          ? 'bg-primary/10 text-primary'
-                          : group.balance < 0
-                            ? 'bg-error/10 text-error'
-                            : 'bg-surface-container-highest text-on-surface-variant'
-                      }`}
-                    >
-                      {group.balance > 0 ? "You're owed" : group.balance < 0 ? 'You owe' : 'Balanced'}
+                        {bal > 0.01 ? "You're owed" : bal < -0.01 ? 'You owe' : 'Settled'}
+                      </div>
                     </div>
                   </div>
                 </div>
+              )
+            })}
+            {groups.length === 0 && (
+              <div className="glass-card p-10 rounded-2xl flex flex-col items-center text-on-surface-variant">
+                <Icon name="group_add" className="text-5xl mb-4 opacity-30" />
+                <p className="font-headline font-bold text-lg text-on-surface mb-1">No groups yet</p>
+                <p className="text-sm opacity-60 mb-4">Create your first group to start splitting expenses.</p>
+                <button
+                  onClick={() => setShowGroupModal(true)}
+                  className="bg-primary text-on-primary px-6 py-3 rounded-xl font-bold hover:brightness-110 transition-all flex items-center gap-2"
+                >
+                  <Icon name="add" />
+                  Create Group
+                </button>
               </div>
-            ))}
+            )}
           </div>
         </section>
       </div>
@@ -225,3 +330,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
