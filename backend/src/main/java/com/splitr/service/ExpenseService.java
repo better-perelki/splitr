@@ -152,17 +152,8 @@ public class ExpenseService {
     }
 
     private void ensureCanEdit(Expense expense, UUID userId) {
-        UUID groupId = expense.getGroup().getId();
-        GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new UnauthorizedException("You are not a member of this group"));
-
-        boolean isCreator = expense.getCreatedBy().getId().equals(userId);
-        boolean isAdmin = member.getRole() == GroupRole.ADMIN;
-        boolean isPayer = expense.getPayers().stream()
-                .anyMatch(p -> p.getUser().getId().equals(userId));
-
-        if (!isCreator && !isAdmin && !isPayer) {
-            throw new UnauthorizedException("Only the creator, a payer, or a group admin can modify this expense");
+        if (!expense.getCreatedBy().getId().equals(userId)) {
+            throw new UnauthorizedException("Only the creator can modify this expense");
         }
     }
 

@@ -3,6 +3,7 @@ import Icon from './Icon'
 import AddExpenseDrawer from './AddExpenseDrawer'
 import { expensesApi, type ExpenseResponse } from '../api/expenses'
 import type { GroupMemberResponse } from '../api/groups'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Props {
     expense: ExpenseResponse | null
@@ -24,11 +25,14 @@ const CATEGORY_ICONS: Record<string, string> = {
 }
 
 export default function ExpenseDetailModal({ expense, onClose, onChanged, groupId, members, currency }: Props) {
+    const { user } = useAuth()
     const [editing, setEditing] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
     if (!expense) return null
+
+    const canEdit = user?.id === expense.createdBy.id
 
     const handleDelete = async () => {
         if (!confirm('Delete this expense?')) return
@@ -155,23 +159,25 @@ export default function ExpenseDetailModal({ expense, onClose, onChanged, groupI
                         </div>
                     )}
 
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            onClick={handleDelete}
-                            disabled={deleting}
-                            className="flex-1 py-3 rounded-xl border border-error/20 text-error font-bold hover:bg-error/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            <Icon name="delete" />
-                            Delete
-                        </button>
-                        <button
-                            onClick={() => setEditing(true)}
-                            className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-bold hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                        >
-                            <Icon name="edit" />
-                            Edit
-                        </button>
-                    </div>
+                    {canEdit && (
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={handleDelete}
+                                disabled={deleting}
+                                className="flex-1 py-3 rounded-xl border border-error/20 text-error font-bold hover:bg-error/10 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                <Icon name="delete" />
+                                Delete
+                            </button>
+                            <button
+                                onClick={() => setEditing(true)}
+                                className="flex-1 py-3 rounded-xl bg-primary text-on-primary font-bold hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            >
+                                <Icon name="edit" />
+                                Edit
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -210,6 +210,24 @@ export default function AddExpenseDrawer({
         [payers],
     )
 
+    const splitValueRecord = useMemo(() => {
+        const r: Record<string, string> = {}
+        for (const [id, s] of Object.entries(splits)) if (s.selected) r[id] = s.value
+        return r
+    }, [splits])
+
+    const remainingFor = (entries: Record<string, string>, excludeId: string) =>
+        Math.max(0, totalNumber - Object.entries(entries)
+            .reduce((s, [id, v]) => (id === excludeId ? s : s + parseNum(v)), 0))
+
+    const clampToRemaining = (raw: string, entries: Record<string, string>, excludeId: string) => {
+        const sanitized = sanitizeNumeric(raw)
+        if (totalNumber <= 0) return sanitized
+        const cap = remainingFor(entries, excludeId)
+        const n = Number(sanitized)
+        return Number.isFinite(n) && n > cap ? cap.toFixed(2) : sanitized
+    }
+
     const togglePayer = (userId: string) => {
         setPayers((prev) => {
             const next = { ...prev }
@@ -521,8 +539,8 @@ export default function AddExpenseDrawer({
                                             <input
                                                 inputMode="decimal"
                                                 value={payers[userId]}
-                                                onChange={(e) => setPayerAmount(userId, sanitizeNumeric(e.target.value))}
-                                                placeholder="0.00"
+                                                onChange={(e) => setPayerAmount(userId, clampToRemaining(e.target.value, payers, userId))}
+                                                placeholder={remainingFor(payers, userId).toFixed(2)}
                                                 className="w-28 bg-surface-container-highest text-right px-3 py-1.5 rounded-lg text-sm font-bold focus:ring-1 focus:ring-primary/40 focus:outline-none"
                                             />
                                         </div>
@@ -592,7 +610,12 @@ export default function AddExpenseDrawer({
                                                 inputMode="decimal"
                                                 value={state.value}
                                                 onChange={(e) =>
-                                                    setSplitValue(m.user.id, sanitizeNumeric(e.target.value, splitType === 'ADJUSTMENT'))
+                                                    setSplitValue(
+                                                        m.user.id,
+                                                        splitType === 'EXACT'
+                                                            ? clampToRemaining(e.target.value, splitValueRecord, m.user.id)
+                                                            : sanitizeNumeric(e.target.value, splitType === 'ADJUSTMENT'),
+                                                    )
                                                 }
                                                 placeholder={
                                                     splitType === 'PERCENTAGE'
@@ -601,7 +624,7 @@ export default function AddExpenseDrawer({
                                                             ? 'weight'
                                                             : splitType === 'ADJUSTMENT'
                                                                 ? '+/-'
-                                                                : '0.00'
+                                                                : remainingFor(splitValueRecord, m.user.id).toFixed(2)
                                                 }
                                                 className="w-24 bg-surface-container-highest text-right px-3 py-1.5 rounded-lg text-sm font-bold focus:ring-1 focus:ring-primary/40 focus:outline-none"
                                             />
