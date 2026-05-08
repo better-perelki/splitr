@@ -212,6 +212,26 @@ export class GroupControllerService {
      * @returns void
      * @throws ApiError
      */
+    public static revertSettlement({
+        id,
+        settlementId,
+    }: {
+        id: string,
+        settlementId: string,
+    }): CancelablePromise<void> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/groups/{id}/settlements/{settlementId}',
+            path: {
+                'id': id,
+                'settlementId': settlementId,
+            },
+        });
+    }
+    /**
+     * @returns void
+     * @throws ApiError
+     */
     public static removeMember({
         id,
         userId,

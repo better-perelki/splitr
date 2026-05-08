@@ -361,7 +361,7 @@ export default function GroupDetailPage() {
                             groupId={group.id}
                             currentUserId={currentUserId}
                             currency={group.currency}
-                            onSettled={fetchBalances}
+                            onSettled={refreshAll}
                         />
                     )}
 

@@ -71,6 +71,18 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
         if (onSettled) onSettled()
     }
 
+    // --- NOWA FUNKCJA DO USUWANIA ---
+    const handleRevert = async (settlementId: string) => {
+        if (!window.confirm('Are you sure you want to revert this settlement?')) return
+        try {
+            await settlementsApi.delete(groupId, settlementId)
+            await fetchData()
+            if (onSettled) onSettled()
+        } catch (e: any) {
+            alert(e.response?.data?.error ?? e.message ?? 'Failed to revert settlement')
+        }
+    }
+
     const openSettle = (debt: BalanceEntry) => {
         setSettleDebt(debt)
         setShowSettleModal(true)
@@ -102,6 +114,7 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
 
     return (
         <div className="space-y-8 animate-fadeIn">
+            {/* ... Statystyki bez zmian ... */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="relative overflow-hidden p-6 rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/5 to-transparent">
                     <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-[40px]" />
@@ -148,6 +161,7 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                 </div>
             </div>
 
+            {/* ... Sekcje You owe / Owed to you bez zmian ... */}
             {userDebts.length > 0 && (
                 <div>
                     <h3 className="font-headline text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-4 flex items-center gap-4">
@@ -156,38 +170,23 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                     </h3>
                     <div className="space-y-3">
                         {userDebts.map((debt, i) => (
-                            <div
-                                key={i}
-                                className="group p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all duration-300 flex items-center justify-between"
-                            >
+                            <div key={i} className="group p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all duration-300 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full bg-error/10 border-2 border-error/20 flex items-center justify-center text-sm font-bold text-error">
-                                        {debt.to.avatarUrl ? (
-                                            <img src={debt.to.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                                        ) : (
-                                            debt.to.username[0].toUpperCase()
-                                        )}
+                                        {debt.to.avatarUrl ? <img src={debt.to.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" /> : debt.to.username[0].toUpperCase()}
                                     </div>
                                     <div>
-                                        <h4 className="font-headline text-lg font-bold text-on-surface">
-                                            {debt.to.username}
-                                        </h4>
+                                        <h4 className="font-headline text-lg font-bold text-on-surface">{debt.to.username}</h4>
                                         <p className="text-sm text-on-surface-variant">You owe them</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
-                                        <div className="font-headline text-xl font-bold text-error">
-                                            {debt.amount.toFixed(2)}
-                                        </div>
+                                        <div className="font-headline text-xl font-bold text-error">{debt.amount.toFixed(2)}</div>
                                         <div className="text-xs text-on-surface-variant">{currency}</div>
                                     </div>
-                                    <button
-                                        onClick={() => openSettle(debt)}
-                                        className="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 active:scale-95 transition-all emerald-shadow flex items-center gap-2"
-                                    >
-                                        <Icon name="handshake" className="text-base" />
-                                        Settle
+                                    <button onClick={() => openSettle(debt)} className="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 active:scale-95 transition-all emerald-shadow flex items-center gap-2">
+                                        <Icon name="handshake" className="text-base" /> Settle
                                     </button>
                                 </div>
                             </div>
@@ -204,29 +203,18 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                     </h3>
                     <div className="space-y-3">
                         {userCredits.map((debt, i) => (
-                            <div
-                                key={i}
-                                className="p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all duration-300 flex items-center justify-between"
-                            >
+                            <div key={i} className="p-5 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-all duration-300 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center text-sm font-bold text-primary">
-                                        {debt.from.avatarUrl ? (
-                                            <img src={debt.from.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" />
-                                        ) : (
-                                            debt.from.username[0].toUpperCase()
-                                        )}
+                                        {debt.from.avatarUrl ? <img src={debt.from.avatarUrl} alt="" className="w-full h-full rounded-full object-cover" /> : debt.from.username[0].toUpperCase()}
                                     </div>
                                     <div>
-                                        <h4 className="font-headline text-lg font-bold text-on-surface">
-                                            {debt.from.username}
-                                        </h4>
+                                        <h4 className="font-headline text-lg font-bold text-on-surface">{debt.from.username}</h4>
                                         <p className="text-sm text-on-surface-variant">Owes you</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="font-headline text-xl font-bold text-primary">
-                                        {debt.amount.toFixed(2)}
-                                    </div>
+                                    <div className="font-headline text-xl font-bold text-primary">{debt.amount.toFixed(2)}</div>
                                     <div className="text-xs text-on-surface-variant">{currency}</div>
                                 </div>
                             </div>
@@ -235,6 +223,7 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                 </div>
             )}
 
+            {/* ... Inne długi i All settled up bez zmian ... */}
             {otherDebts.length > 0 && (
                 <div>
                     <h3 className="font-headline text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-4 flex items-center gap-4">
@@ -243,10 +232,7 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                     </h3>
                     <div className="space-y-3">
                         {otherDebts.map((debt, i) => (
-                            <div
-                                key={i}
-                                className="p-4 rounded-2xl bg-surface-container-low/60 flex items-center justify-between"
-                            >
+                            <div key={i} className="p-4 rounded-2xl bg-surface-container-low/60 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="flex items-center gap-1">
                                         <div className="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 flex items-center justify-center text-xs font-bold text-on-surface-variant">
@@ -280,6 +266,7 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                 </div>
             )}
 
+            {/* --- ZMODYFIKOWANA HISTORIA Z PRZYCISKIEM USUWANIA --- */}
             {settlements.length > 0 && (
                 <div>
                     <button
@@ -290,17 +277,14 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                             Settlement History ({settlements.length})
                             <span className="flex-1 h-px bg-outline-variant/10" />
                         </h3>
-                        <Icon
-                            name={showHistory ? 'expand_less' : 'expand_more'}
-                            className="text-xl"
-                        />
+                        <Icon name={showHistory ? 'expand_less' : 'expand_more'} className="text-xl" />
                     </button>
                     {showHistory && (
                         <div className="space-y-3 animate-fadeIn">
                             {settlements.map((s) => (
                                 <div
                                     key={s.id}
-                                    className="p-4 rounded-2xl bg-surface-container-low/40 border border-white/[0.03] flex items-center justify-between"
+                                    className="group/item p-4 rounded-2xl bg-surface-container-low/40 border border-white/[0.03] flex items-center justify-between hover:bg-surface-container-low/60 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -318,13 +302,25 @@ export default function BalancesTab({ groupId, currentUserId, currency, onSettle
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="font-headline font-bold text-primary">
-                                            {s.amount.toFixed(2)} {s.currency}
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <div className="font-headline font-bold text-primary">
+                                                {s.amount.toFixed(2)} {s.currency}
+                                            </div>
+                                            <div className="text-[10px] text-on-surface-variant">
+                                                {formatDate(s.settledAt)}
+                                            </div>
                                         </div>
-                                        <div className="text-[10px] text-on-surface-variant">
-                                            {formatDate(s.settledAt)}
-                                        </div>
+                                        {/* PRZYCISK USUWANIA (pokazuje się po najechaniu lub jeśli to Twoje rozliczenie) */}
+                                        {(s.payer.id === currentUserId || s.payee.id === currentUserId) && (
+                                            <button
+                                                onClick={() => handleRevert(s.id)}
+                                                className="p-2 rounded-full hover:bg-error/10 text-on-surface-variant hover:text-error transition-all opacity-0 group-hover/item:opacity-100"
+                                                title="Revert settlement"
+                                            >
+                                                <Icon name="delete" className="text-lg" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}

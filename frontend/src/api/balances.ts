@@ -53,4 +53,8 @@ export const settlementsApi = {
     create: (groupId: string, data: SettlementCreateRequest) =>
         api.post<SettlementResponse>(`/groups/${groupId}/settlements`, data)
             .then((r: AxiosResponse<SettlementResponse>) => r.data),
+
+    delete: (groupId: string, settlementId: string) =>
+        api.delete(`/groups/${groupId}/settlements/${settlementId}`)
+            .then((r: AxiosResponse<void>) => r.data),
 }

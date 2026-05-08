@@ -696,6 +696,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/FriendRequestDetails"
+  /api/groups/{id}/settlements/{settlementId}:
+    delete:
+      tags:
+      - group-controller
+      operationId: revertSettlement
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: settlementId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/groups/{id}/members/{userId}:
     delete:
       tags:

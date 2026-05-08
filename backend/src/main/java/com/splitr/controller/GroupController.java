@@ -100,6 +100,14 @@ public class GroupController {
         return settlementService.createSettlement(userId(auth), groupId, request);
     }
 
+    @DeleteMapping("/{id}/settlements/{settlementId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revertSettlement(Authentication auth,
+                                 @PathVariable("id") UUID groupId,
+                                 @PathVariable("settlementId") UUID settlementId) {
+        settlementService.revertSettlement(userId(auth), groupId, settlementId);
+    }
+
     @GetMapping("/{id}/settlements")
     public List<SettlementResponse> listSettlements(Authentication auth,
                                                      @PathVariable("id") UUID groupId) {

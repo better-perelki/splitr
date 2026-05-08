@@ -65,6 +65,28 @@ public class SettlementService {
         return mapToResponse(settlement);
     }
 
+    @Transactional
+    public void revertSettlement(UUID userId, UUID groupId, UUID settlementId) {
+        groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
+                .orElseThrow(() -> new UnauthorizedException("You are not a member of this group"));
+
+        Settlement settlement = settlementRepository.findById(settlementId)
+                .orElseThrow(() -> new ResourceNotFoundException("Settlement not found"));
+
+        if (!settlement.getGroup().getId().equals(groupId)) {
+            throw new IllegalArgumentException("Settlement does not belong to this group");
+        }
+
+        boolean isPayer = settlement.getPayer().getId().equals(userId);
+        boolean isPayee = settlement.getPayee().getId().equals(userId);
+
+        if (!isPayer && !isPayee) {
+            throw new UnauthorizedException("Only the payer or payee can revert this settlement");
+        }
+
+        settlementRepository.delete(settlement);
+    }
+
     @Transactional(readOnly = true)
     public List<SettlementResponse> listSettlements(UUID userId, UUID groupId) {
         groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
@@ -73,25 +95,6 @@ public class SettlementService {
         return settlementRepository.findByGroupIdOrderBySettledAtDesc(groupId).stream()
                 .map(this::mapToResponse)
                 .toList();
-    }
-
-    public void deleteSettlement(UUID userId, UUID settlementId) {
-        Settlement settlement = settlementRepository.findById(settlementId)
-                .orElseThrow(() -> new ResourceNotFoundException("Settlement not found"));
-
-        UUID groupId = settlement.getGroup().getId();
-        GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new UnauthorizedException("You are not a member of this group"));
-
-        boolean isPayer = settlement.getPayer().getId().equals(userId);
-        boolean isPayee = settlement.getPayee().getId().equals(userId);
-        boolean isAdmin = member.getRole() == GroupRole.ADMIN;
-
-        if (!isPayer && !isPayee && !isAdmin) {
-            throw new UnauthorizedException("Only the payer, payee, or a group admin can delete this settlement");
-        }
-
-        settlementRepository.delete(settlement);
     }
 
     private SettlementResponse mapToResponse(Settlement settlement) {
