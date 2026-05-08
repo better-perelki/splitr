@@ -1,7 +1,9 @@
 package com.splitr.controller;
 
 import com.splitr.dto.*;
+import com.splitr.service.BalanceService;
 import com.splitr.service.GroupService;
+import com.splitr.service.SettlementService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -15,9 +17,15 @@ import java.util.UUID;
 public class GroupController {
 
     private final GroupService groupService;
+    private final BalanceService balanceService;
+    private final SettlementService settlementService;
 
-    public GroupController(GroupService groupService) {
+    public GroupController(GroupService groupService,
+                           BalanceService balanceService,
+                           SettlementService settlementService) {
         this.groupService = groupService;
+        this.balanceService = balanceService;
+        this.settlementService = settlementService;
     }
 
     @PostMapping
@@ -77,6 +85,33 @@ public class GroupController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteGroup(Authentication auth, @PathVariable("id") UUID groupId) {
         groupService.deleteGroup(userId(auth), groupId);
+    }
+
+    @GetMapping("/{id}/balances")
+    public GroupBalanceResponse getBalances(Authentication auth, @PathVariable("id") UUID groupId) {
+        return balanceService.calculateBalances(groupId);
+    }
+
+    @PostMapping("/{id}/settlements")
+    @ResponseStatus(HttpStatus.CREATED)
+    public SettlementResponse createSettlement(Authentication auth,
+                                               @PathVariable("id") UUID groupId,
+                                               @Valid @RequestBody SettlementCreateRequest request) {
+        return settlementService.createSettlement(userId(auth), groupId, request);
+    }
+
+    @DeleteMapping("/{id}/settlements/{settlementId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revertSettlement(Authentication auth,
+                                 @PathVariable("id") UUID groupId,
+                                 @PathVariable("settlementId") UUID settlementId) {
+        settlementService.revertSettlement(userId(auth), groupId, settlementId);
+    }
+
+    @GetMapping("/{id}/settlements")
+    public List<SettlementResponse> listSettlements(Authentication auth,
+                                                     @PathVariable("id") UUID groupId) {
+        return settlementService.listSettlements(userId(auth), groupId);
     }
 
     private UUID userId(Authentication auth) {

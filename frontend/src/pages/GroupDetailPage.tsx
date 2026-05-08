@@ -1,12 +1,14 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Icon from '../components/Icon'
 import GroupModal from '../components/GroupModal'
 import GroupMembersManager from '../components/GroupMembersManager'
 import AddExpenseDrawer from '../components/AddExpenseDrawer'
+import BalancesTab from '../components/BalancesTab'
 import ExpenseDetailModal from '../components/ExpenseDetailModal'
 import { groupsApi, type GroupDetailsResponse, type GroupUpdateRequest, type GroupMemberResponse } from '../api/groups'
 import { expensesApi, type ExpenseResponse } from '../api/expenses'
+import { balancesApi, type GroupBalanceResponse } from '../api/balances'
 import { useAuth } from '../contexts/AuthContext'
 
 type TabType = 'expenses' | 'balances' | 'analytics' | 'members'
@@ -35,15 +37,18 @@ function formatExpenseDate(iso: string) {
 export default function GroupDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
+    const [searchParams] = useSearchParams()
+    const initialTab = (searchParams.get('tab') as TabType) || 'expenses'
     const [group, setGroup] = useState<GroupDetailsResponse | null>(null)
     const [expenses, setExpenses] = useState<ExpenseResponse[]>([])
     const [expensesLoading, setExpensesLoading] = useState(true)
     const [expensesError, setExpensesError] = useState<string | null>(null)
-    const [activeTab, setActiveTab] = useState<TabType>('expenses')
+    const [activeTab, setActiveTab] = useState<TabType>(initialTab)
     const [showEditModal, setShowEditModal] = useState(false)
     const [showAddDrawer, setShowAddDrawer] = useState(false)
     const [selectedExpense, setSelectedExpense] = useState<ExpenseResponse | null>(null)
     const [loading, setLoading] = useState(true)
+    const [balanceData, setBalanceData] = useState<GroupBalanceResponse | null>(null)
     const contentRef = useRef<HTMLDivElement>(null)
 
     const { user } = useAuth()
@@ -67,6 +72,13 @@ export default function GroupDetailPage() {
             .finally(() => setLoading(false))
     }, [id])
 
+    const fetchBalances = useCallback(() => {
+        if (!id) return
+        balancesApi.get(id)
+            .then((data) => setBalanceData(data))
+            .catch(() => { })
+    }, [id])
+
     const fetchExpenses = useCallback(() => {
         if (!id) return
         expensesApi
@@ -82,6 +94,11 @@ export default function GroupDetailPage() {
             .finally(() => setExpensesLoading(false))
     }, [id])
 
+    const refreshAll = useCallback(() => {
+        fetchExpenses()
+        fetchBalances()
+    }, [fetchExpenses, fetchBalances])
+
     useEffect(() => {
         fetchGroupDetails()
     }, [fetchGroupDetails])
@@ -90,13 +107,17 @@ export default function GroupDetailPage() {
         fetchExpenses()
     }, [fetchExpenses])
 
+    useEffect(() => {
+        fetchBalances()
+    }, [fetchBalances])
+
     const handleUpdateGroup = async (data: GroupUpdateRequest) => {
         if (!id || !group) return
         const updated = await groupsApi.update(id, data)
         setGroup({ ...group, ...updated })
     }
 
-    const expensesByDate = useMemo(() => {
+    const expensesByDate = (() => {
         const groups = new Map<string, ExpenseResponse[]>()
         for (const e of expenses) {
             const key = e.expenseDate
@@ -104,9 +125,13 @@ export default function GroupDetailPage() {
             groups.get(key)!.push(e)
         }
         return Array.from(groups.entries()).sort(([a], [b]) => (a < b ? 1 : -1))
-    }, [expenses])
+    })()
 
-    const userBalance = useMemo(() => {
+    const userBalance = (() => {
+        if (balanceData) {
+            const member = balanceData.memberBalances.find(m => m.user.id === currentUserId)
+            return member?.balance ?? 0
+        }
         let owed = 0
         for (const e of expenses) {
             const paid = e.payers.find((p) => p.user.id === currentUserId)?.amount ?? 0
@@ -114,7 +139,7 @@ export default function GroupDetailPage() {
             owed += paid - share
         }
         return owed
-    }, [expenses, currentUserId])
+    })()
 
     if (loading) {
         return (
@@ -332,11 +357,12 @@ export default function GroupDetailPage() {
                     )}
 
                     {activeTab === 'balances' && (
-                        <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
-                            <Icon name="account_balance" className="text-6xl mb-4 opacity-30" />
-                            <p className="font-headline text-lg font-bold mb-1">Balances coming soon</p>
-                            <p className="text-sm opacity-60">Settlement plan will appear once we wire up the balance service.</p>
-                        </div>
+                        <BalancesTab
+                            groupId={group.id}
+                            currentUserId={currentUserId}
+                            currency={group.currency}
+                            onSettled={refreshAll}
+                        />
                     )}
 
                     {activeTab === 'analytics' && (
@@ -349,23 +375,48 @@ export default function GroupDetailPage() {
                 </div>
 
                 <div className="col-span-4">
-                    <div className="glass-panel p-8 rounded-3xl overflow-hidden relative border border-primary/10">
+                    <div
+                        onClick={() => {
+                            setActiveTab('balances')
+                            setTimeout(() => contentRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+                        }}
+                        className="glass-panel p-8 rounded-3xl overflow-hidden relative border border-primary/10 cursor-pointer hover:border-primary/30 transition-all group/pos"
+                    >
                         <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-[100px]" />
                         <h3 className="font-headline text-xl font-bold mb-8 flex items-center gap-3">
                             <Icon name="account_balance_wallet" className="text-primary" />
                             Your Position
+                            <Icon name="arrow_forward" className="text-on-surface-variant/40 text-sm ml-auto group-hover/pos:text-primary group-hover/pos:translate-x-1 transition-all" />
                         </h3>
-                        <div className="p-6 bg-surface-container-high/40 rounded-2xl border border-white/5 mb-8">
+                        <div className={`p-6 rounded-2xl border mb-4 ${
+                            userBalance < -0.01
+                                ? 'bg-error/5 border-error/15'
+                                : 'bg-surface-container-high/40 border-white/5'
+                        }`}>
                             <p className="text-xs text-on-surface-variant uppercase tracking-widest mb-2 font-bold">
                                 {userBalance >= 0 ? 'You are owed' : 'You owe'}
                             </p>
                             <div className="flex items-baseline gap-2">
-                                <span className="font-headline text-3xl font-bold text-primary">
+                                <span className={`font-headline text-3xl font-bold ${userBalance < -0.01 ? 'text-error' : 'text-primary'}`}>
                                     {Math.abs(userBalance).toFixed(2)}
                                 </span>
                                 <span className="text-on-surface-variant text-sm font-medium">{group.currency}</span>
                             </div>
                         </div>
+                        {userBalance < -0.01 && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    setActiveTab('balances')
+                                    setTimeout(() => contentRef.current?.scrollIntoView({ behavior: 'smooth' }), 50)
+                                }}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 active:scale-[0.98] transition-all emerald-shadow"
+                            >
+                                <Icon name="handshake" className="text-base" />
+                                Settle Now
+                                <Icon name="arrow_forward" className="text-base" />
+                            </button>
+                        )}
                     </div>
 
                     <div className="mt-8 p-8 border border-outline-variant/10 rounded-3xl">
@@ -439,7 +490,7 @@ export default function GroupDetailPage() {
                 members={group.members}
                 currency={group.currency}
                 onSaved={() => {
-                    fetchExpenses()
+                    refreshAll()
                     setShowAddDrawer(false)
                 }}
             />
@@ -447,7 +498,7 @@ export default function GroupDetailPage() {
             <ExpenseDetailModal
                 expense={selectedExpense}
                 onClose={() => setSelectedExpense(null)}
-                onChanged={() => fetchExpenses()}
+                onChanged={() => refreshAll()}
                 groupId={group.id}
                 members={group.members}
                 currency={group.currency}

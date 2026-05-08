@@ -230,6 +230,51 @@ paths:
       responses:
         "204":
           description: No Content
+  /api/groups/{id}/settlements:
+    get:
+      tags:
+      - group-controller
+      operationId: listSettlements
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SettlementResponse"
+    post:
+      tags:
+      - group-controller
+      operationId: createSettlement
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettlementCreateRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SettlementResponse"
   /api/groups/{id}/members:
     post:
       tags:
@@ -587,6 +632,25 @@ paths:
                 type: object
                 additionalProperties:
                   type: string
+  /api/groups/{id}/balances:
+    get:
+      tags:
+      - group-controller
+      operationId: getBalances
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/GroupBalanceResponse"
   /api/friends:
     get:
       tags:
@@ -632,6 +696,27 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/FriendRequestDetails"
+  /api/groups/{id}/settlements/{settlementId}:
+    delete:
+      tags:
+      - group-controller
+      operationId: revertSettlement
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: settlementId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
   /api/groups/{id}/members/{userId}:
     delete:
       tags:
@@ -952,6 +1037,48 @@ components:
           - OTHER
       required:
       - type
+    SettlementCreateRequest:
+      type: object
+      properties:
+        payeeId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          minimum: 0.01
+        currency:
+          type: string
+        method:
+          type: string
+        notes:
+          type: string
+      required:
+      - amount
+      - payeeId
+    SettlementResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        groupId:
+          type: string
+          format: uuid
+        payer:
+          $ref: "#/components/schemas/UserSummary"
+        payee:
+          $ref: "#/components/schemas/UserSummary"
+        amount:
+          type: number
+        currency:
+          type: string
+        method:
+          type: string
+        notes:
+          type: string
+        settledAt:
+          type: string
+          format: date-time
     AddMemberRequest:
       type: object
       properties:
@@ -1106,6 +1233,36 @@ components:
         joinedAt:
           type: string
           format: date-time
+    BalanceEntry:
+      type: object
+      properties:
+        from:
+          $ref: "#/components/schemas/UserSummary"
+        to:
+          $ref: "#/components/schemas/UserSummary"
+        amount:
+          type: number
+    GroupBalanceResponse:
+      type: object
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        memberBalances:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberBalance"
+        simplifiedDebts:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceEntry"
+    MemberBalance:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserSummary"
+        balance:
+          type: number
     PagedExpenseResponse:
       type: object
       properties:
