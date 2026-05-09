@@ -5,6 +5,7 @@ import GroupModal from '../components/GroupModal'
 import GroupMembersManager from '../components/GroupMembersManager'
 import AddExpenseDrawer from '../components/AddExpenseDrawer'
 import BalancesTab from '../components/BalancesTab'
+import GroupAnalyticsTab from '../components/GroupAnalyticsTab'
 import ExpenseDetailModal from '../components/ExpenseDetailModal'
 import { groupsApi, type GroupDetailsResponse, type GroupUpdateRequest, type GroupMemberResponse } from '../api/groups'
 import { expensesApi, type ExpenseResponse } from '../api/expenses'
@@ -366,11 +367,7 @@ export default function GroupDetailPage() {
                     )}
 
                     {activeTab === 'analytics' && (
-                        <div className="flex flex-col items-center justify-center py-20 text-on-surface-variant">
-                            <Icon name="analytics" className="text-6xl mb-4 opacity-30" />
-                            <p className="font-headline text-lg font-bold mb-1">Analytics Coming Soon</p>
-                            <p className="text-sm opacity-60">Charts and spending insights will appear here.</p>
-                        </div>
+                        <GroupAnalyticsTab groupId={group.id} currency={group.currency} />
                     )}
                 </div>
 

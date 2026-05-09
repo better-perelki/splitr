@@ -1,14 +1,17 @@
 package com.splitr.controller;
 
 import com.splitr.dto.*;
+import com.splitr.service.AnalyticsService;
 import com.splitr.service.BalanceService;
 import com.splitr.service.GroupService;
 import com.splitr.service.SettlementService;
 import jakarta.validation.Valid;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,13 +22,16 @@ public class GroupController {
     private final GroupService groupService;
     private final BalanceService balanceService;
     private final SettlementService settlementService;
+    private final AnalyticsService analyticsService;
 
     public GroupController(GroupService groupService,
                            BalanceService balanceService,
-                           SettlementService settlementService) {
+                           SettlementService settlementService,
+                           AnalyticsService analyticsService) {
         this.groupService = groupService;
         this.balanceService = balanceService;
         this.settlementService = settlementService;
+        this.analyticsService = analyticsService;
     }
 
     @PostMapping
@@ -85,6 +91,14 @@ public class GroupController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteGroup(Authentication auth, @PathVariable("id") UUID groupId) {
         groupService.deleteGroup(userId(auth), groupId);
+    }
+
+    @GetMapping("/{id}/analytics")
+    public GroupAnalyticsResponse getAnalytics(Authentication auth,
+                                               @PathVariable("id") UUID groupId,
+                                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return analyticsService.getAnalytics(userId(auth), groupId, from, to);
     }
 
     @GetMapping("/{id}/balances")
