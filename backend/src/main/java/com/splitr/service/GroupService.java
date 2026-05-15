@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
 @Service
 @Transactional
 public class GroupService {
@@ -26,17 +27,20 @@ public class GroupService {
     private final UserRepository userRepository;
     private final FriendService friendService;
     private final BalanceService balanceService;
+    private final NotificationService notificationService;
 
     public GroupService(GroupRepository groupRepository,
                         GroupMemberRepository groupMemberRepository,
                         UserRepository userRepository,
                         FriendService friendService,
-                        @Lazy BalanceService balanceService) {
+                        @Lazy BalanceService balanceService,
+                        @Lazy NotificationService notificationService) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.friendService = friendService;
         this.balanceService = balanceService;
+        this.notificationService = notificationService;
     }
 
     public GroupResponse createGroup(UUID userId, GroupCreateRequest request) {
@@ -136,6 +140,17 @@ public class GroupService {
         member.setRole(GroupRole.MEMBER);
 
         groupMemberRepository.save(member);
+
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        notificationService.createNotification(
+                userToAddId,
+                NotificationType.GROUP_ADDED,
+                "Added to group",
+                currentUser.getUsername() + " added you to '" + group.getName() + "'",
+                "/groups/" + groupId,
+                currentUserId
+        );
     }
 
     public void removeMember(UUID currentUserId, UUID groupId, UUID targetUserId) {

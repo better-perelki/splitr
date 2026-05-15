@@ -10,6 +10,7 @@ import com.splitr.repository.UserRepository;
 import com.splitr.service.split.SplitResult;
 import com.splitr.service.split.SplitStrategy;
 import com.splitr.service.split.SplitStrategyFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,17 +34,20 @@ public class ExpenseService {
     private final UserRepository userRepository;
     private final SplitStrategyFactory splitStrategyFactory;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     public ExpenseService(ExpenseRepository expenseRepository,
                           GroupMemberRepository groupMemberRepository,
                           UserRepository userRepository,
                           SplitStrategyFactory splitStrategyFactory,
-                          FileStorageService fileStorageService) {
+                          FileStorageService fileStorageService,
+                          @Lazy NotificationService notificationService) {
         this.expenseRepository = expenseRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.splitStrategyFactory = splitStrategyFactory;
         this.fileStorageService = fileStorageService;
+        this.notificationService = notificationService;
     }
 
     public ExpenseResponse createExpense(UUID userId, UUID groupId, ExpenseCreateRequest request) {
@@ -73,6 +77,21 @@ public class ExpenseService {
         attachSplits(expense, calculated);
 
         expense = expenseRepository.save(expense);
+
+        String desc = expense.getDescription();
+        String amt = expense.getAmount().toPlainString() + " " + expense.getCurrency();
+        groupMemberRepository.findByGroupId(group.getId()).stream()
+                .map(m -> m.getUser().getId())
+                .filter(memberId -> !memberId.equals(userId))
+                .forEach(memberId -> notificationService.createNotification(
+                        memberId,
+                        NotificationType.EXPENSE_ADDED,
+                        "New expense",
+                        creator.getUsername() + " added '" + desc + "' (" + amt + ")",
+                        "/groups/" + group.getId(),
+                        userId
+                ));
+
         return mapToResponse(expense);
     }
 

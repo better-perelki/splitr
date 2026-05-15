@@ -5,10 +5,12 @@ import com.splitr.dto.Friendship;
 import com.splitr.entity.AutoConnectResult;
 import com.splitr.entity.FriendRequest;
 import com.splitr.entity.FriendRequestStatus;
+import com.splitr.entity.NotificationType;
 import com.splitr.entity.User;
 import com.splitr.mapper.FriendMapper;
 import com.splitr.repository.FriendRequestRepository;
 import com.splitr.repository.UserRepository;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,13 +24,16 @@ public class FriendService {
     private final FriendRequestRepository friendRequestRepository;
     private final UserRepository userRepository;
     private final FriendMapper mapper;
+    private final NotificationService notificationService;
 
     public FriendService(FriendRequestRepository repo,
                          UserRepository userRepo,
-                         FriendMapper mapper) {
+                         FriendMapper mapper,
+                         @Lazy NotificationService notificationService) {
         this.friendRequestRepository = repo;
         this.userRepository = userRepo;
         this.mapper = mapper;
+        this.notificationService = notificationService;
     }
 
     private void createNewRequest(User sender, User receiver) {
@@ -99,6 +104,15 @@ public class FriendService {
         }
 
         createNewRequest(sender, receiver);
+
+        notificationService.createNotification(
+                receiverId,
+                NotificationType.FRIEND_REQUEST,
+                "Friend request",
+                sender.getUsername() + " sent you a friend request",
+                "/friends",
+                senderId
+        );
     }
 
     @Transactional
