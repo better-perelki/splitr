@@ -196,6 +196,7 @@ export default function AnalyticsPage() {
                             <input
                                 type="date"
                                 value={customFrom}
+                                max={customTo || new Date().toISOString().slice(0, 10)}
                                 onChange={(e) => setCustomFrom(e.target.value)}
                                 className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"
                             />
@@ -203,6 +204,8 @@ export default function AnalyticsPage() {
                             <input
                                 type="date"
                                 value={customTo}
+                                min={customFrom || undefined}
+                                max={new Date().toISOString().slice(0, 10)}
                                 onChange={(e) => setCustomTo(e.target.value)}
                                 className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"
                             />
