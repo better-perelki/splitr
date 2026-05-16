@@ -23,10 +23,10 @@ public class AuthService {
     private final long refreshTokenExpiration;
 
     public AuthService(UserRepository userRepository,
-                       RefreshTokenRepository refreshTokenRepository,
-                       PasswordEncoder passwordEncoder,
-                       JwtUtil jwtUtil,
-                       @Value("${app.jwt.refresh-token-expiration}") long refreshTokenExpiration) {
+            RefreshTokenRepository refreshTokenRepository,
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil,
+            @Value("${app.jwt.refresh-token-expiration}") long refreshTokenExpiration) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
