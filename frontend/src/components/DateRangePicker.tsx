@@ -102,6 +102,7 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
     }, [pendingFrom, hover, fromDate, toDate])
 
     function handleDayClick(date: Date) {
+        if (date > today) return
         if (pendingFrom === null) {
             setPendingFrom(date)
             setHover(null)
@@ -173,6 +174,7 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
                     <div className="grid grid-cols-7 gap-1">
                         {grid.map((d, i) => {
                             const inMonth = d.getMonth() === view.getMonth()
+                            const isFuture = d > today
                             const isStart = !!rangeStart && d.getTime() === rangeStart.getTime()
                             const isEnd = !!rangeEnd && d.getTime() === rangeEnd.getTime()
                             const inRange =
@@ -185,16 +187,19 @@ export default function DateRangePicker({ from, to, onChange }: DateRangePickerP
                                 <button
                                     key={i}
                                     type="button"
+                                    disabled={isFuture}
                                     onClick={() => handleDayClick(d)}
-                                    onMouseEnter={() => pendingFrom && setHover(d)}
+                                    onMouseEnter={() => pendingFrom && !isFuture && setHover(d)}
                                     className={`h-9 text-sm rounded-lg transition-colors ${
-                                        isEdge
-                                            ? 'bg-primary text-on-primary font-bold'
-                                            : isMiddle
-                                              ? 'bg-primary/15 text-on-surface'
-                                              : inMonth
-                                                ? 'text-on-surface hover:bg-surface-container-highest'
-                                                : 'text-on-surface-variant/40 hover:bg-surface-container-highest/50'
+                                        isFuture
+                                            ? 'text-on-surface-variant/25 cursor-not-allowed'
+                                            : isEdge
+                                              ? 'bg-primary text-on-primary font-bold'
+                                              : isMiddle
+                                                ? 'bg-primary/15 text-on-surface'
+                                                : inMonth
+                                                  ? 'text-on-surface hover:bg-surface-container-highest'
+                                                  : 'text-on-surface-variant/40 hover:bg-surface-container-highest/50'
                                     } ${isToday && !isEdge ? 'ring-1 ring-primary/40' : ''}`}
                                 >
                                     {d.getDate()}
