@@ -11,7 +11,10 @@ import java.util.UUID;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    Page<Notification> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
+    @Query(value = "SELECT n FROM Notification n LEFT JOIN FETCH n.actor "
+            + "WHERE n.user.id = :userId ORDER BY n.createdAt DESC",
+            countQuery = "SELECT count(n) FROM Notification n WHERE n.user.id = :userId")
+    Page<Notification> findPageWithActor(UUID userId, Pageable pageable);
 
     long countByUserIdAndReadFalse(UUID userId);
 

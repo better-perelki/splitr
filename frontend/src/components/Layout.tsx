@@ -1,8 +1,9 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Icon from './Icon'
 import NotificationPanel from './NotificationPanel'
 import WalletPanel from './WalletPanel'
+import AddExpensePopover from './AddExpensePopover'
 
 const navItems = [
   { to: '/', icon: 'dashboard', label: 'Dashboard' },
@@ -22,11 +23,8 @@ const breadcrumbMap: Record<string, string> = {
 
 export default function Layout() {
   const location = useLocation()
-  const navigate = useNavigate()
   const { logout } = useAuth()
   const breadcrumb = breadcrumbMap[location.pathname] ?? ''
-
-  const goToGroups = () => navigate('/groups')
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -72,12 +70,7 @@ export default function Layout() {
           <div className="flex items-center gap-6">
             <NotificationPanel />
             <WalletPanel />
-            <button
-              onClick={goToGroups}
-              className="ml-2 px-6 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl text-xs uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
-            >
-              Add Expense
-            </button>
+            <AddExpensePopover />
           </div>
         </header>
 

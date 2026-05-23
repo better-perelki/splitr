@@ -5,12 +5,12 @@ import com.splitr.dto.Friendship;
 import com.splitr.entity.AutoConnectResult;
 import com.splitr.entity.FriendRequest;
 import com.splitr.entity.FriendRequestStatus;
-import com.splitr.entity.NotificationType;
 import com.splitr.entity.User;
+import com.splitr.event.NotificationEvent;
 import com.splitr.mapper.FriendMapper;
 import com.splitr.repository.FriendRequestRepository;
 import com.splitr.repository.UserRepository;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,16 +24,16 @@ public class FriendService {
     private final FriendRequestRepository friendRequestRepository;
     private final UserRepository userRepository;
     private final FriendMapper mapper;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher events;
 
     public FriendService(FriendRequestRepository repo,
                          UserRepository userRepo,
                          FriendMapper mapper,
-                         @Lazy NotificationService notificationService) {
+                         ApplicationEventPublisher events) {
         this.friendRequestRepository = repo;
         this.userRepository = userRepo;
         this.mapper = mapper;
-        this.notificationService = notificationService;
+        this.events = events;
     }
 
     private void createNewRequest(User sender, User receiver) {
@@ -73,6 +73,8 @@ public class FriendService {
             return switch (fr.getStatus()) {
                 case PENDING -> {
                     fr.setStatus(FriendRequestStatus.ACCEPTED);
+                    events.publishEvent(new NotificationEvent.FriendRequestAccepted(
+                            receiverId, senderId, sender.getUsername()));
                     yield true;
                 }
                 case ACCEPTED -> throw new IllegalArgumentException("Already friends");
@@ -105,14 +107,8 @@ public class FriendService {
 
         createNewRequest(sender, receiver);
 
-        notificationService.createNotification(
-                receiverId,
-                NotificationType.FRIEND_REQUEST,
-                "Friend request",
-                sender.getUsername() + " sent you a friend request",
-                "/friends",
-                senderId
-        );
+        events.publishEvent(new NotificationEvent.FriendRequestSent(
+                receiverId, senderId, sender.getUsername()));
     }
 
     @Transactional
@@ -137,6 +133,15 @@ public class FriendService {
         }
 
         fr.setStatus(FriendRequestStatus.ACCEPTED);
+
+        User receiver = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Receiver not found"));
+
+        events.publishEvent(new NotificationEvent.FriendRequestAccepted(
+                fr.getSender().getId(),
+                receiver.getId(),
+                receiver.getUsername()
+        ));
     }
 
     public AutoConnectResult autoConnect(UUID currentUserId, UUID targetUserId) {

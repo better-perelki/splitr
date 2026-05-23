@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import Icon from './Icon'
+import DateRangePicker from './DateRangePicker'
 import { analyticsApi, type GroupAnalyticsResponse } from '../api/analytics'
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -168,19 +169,14 @@ export default function GroupAnalyticsTab({ groupId, currency }: Props) {
                         </button>
                     </div>
                     {preset === 'custom' && (
-                        <div className="flex items-center gap-3 animate-fadeIn">
-                            <input
-                                type="date"
-                                value={customFrom}
-                                onChange={(e) => setCustomFrom(e.target.value)}
-                                className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"
-                            />
-                            <span className="text-on-surface-variant text-sm">→</span>
-                            <input
-                                type="date"
-                                value={customTo}
-                                onChange={(e) => setCustomTo(e.target.value)}
-                                className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"
+                        <div className="animate-fadeIn">
+                            <DateRangePicker
+                                from={customFrom}
+                                to={customTo}
+                                onChange={(f, t) => {
+                                    setCustomFrom(f)
+                                    setCustomTo(t)
+                                }}
                             />
                         </div>
                     )}

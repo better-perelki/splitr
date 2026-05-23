@@ -6,15 +6,15 @@ import com.splitr.dto.UserSummary;
 import com.splitr.entity.Group;
 import com.splitr.entity.GroupMember;
 import com.splitr.entity.GroupRole;
-import com.splitr.entity.NotificationType;
 import com.splitr.entity.Settlement;
 import com.splitr.entity.User;
+import com.splitr.event.NotificationEvent;
 import com.splitr.exception.ResourceNotFoundException;
 import com.splitr.exception.UnauthorizedException;
 import com.splitr.repository.GroupMemberRepository;
 import com.splitr.repository.SettlementRepository;
 import com.splitr.repository.UserRepository;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,16 +28,16 @@ public class SettlementService {
     private final SettlementRepository settlementRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
+    private final ApplicationEventPublisher events;
 
     public SettlementService(SettlementRepository settlementRepository,
                              GroupMemberRepository groupMemberRepository,
                              UserRepository userRepository,
-                             @Lazy NotificationService notificationService) {
+                             ApplicationEventPublisher events) {
         this.settlementRepository = settlementRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
-        this.notificationService = notificationService;
+        this.events = events;
     }
 
     public SettlementResponse createSettlement(UUID userId, UUID groupId, SettlementCreateRequest request) {
@@ -68,15 +68,14 @@ public class SettlementService {
 
         settlement = settlementRepository.save(settlement);
 
-        String amt = settlement.getAmount().toPlainString() + " " + settlement.getCurrency();
-        notificationService.createNotification(
+        events.publishEvent(new NotificationEvent.SettlementCreated(
                 request.payeeId(),
-                NotificationType.SETTLEMENT_RECEIVED,
-                "Payment received",
-                payer.getUsername() + " settled " + amt + " with you",
-                "/groups/" + groupId,
-                userId
-        );
+                userId,
+                groupId,
+                payer.getUsername(),
+                settlement.getAmount(),
+                settlement.getCurrency()
+        ));
 
         return mapToResponse(settlement);
     }

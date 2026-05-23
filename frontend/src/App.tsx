@@ -10,7 +10,6 @@ import GroupsPage from './pages/GroupsPage'
 import FriendsPage from './pages/FriendsPage'
 import AnalyticsPage from './pages/AnalyticsPage'
 import ProfilePage from './pages/ProfilePage'
-import PlaceholderPage from './pages/PlaceholderPage'
 import InvitePage from './pages/InvitePage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -52,7 +51,6 @@ export default function App() {
         <Route path="groups/:id" element={<GroupDetailPage />} />
         <Route path="friends" element={<FriendsPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="settings" element={<PlaceholderPage title="Settings" />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 

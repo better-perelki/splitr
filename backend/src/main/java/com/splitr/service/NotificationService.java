@@ -5,11 +5,13 @@ import com.splitr.entity.Notification;
 import com.splitr.entity.NotificationType;
 import com.splitr.entity.User;
 import com.splitr.exception.ResourceNotFoundException;
+import com.splitr.exception.UnauthorizedException;
 import com.splitr.repository.NotificationRepository;
 import com.splitr.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
@@ -27,30 +29,30 @@ public class NotificationService {
         this.userRepository = userRepository;
     }
 
-    public void createNotification(UUID recipientId, NotificationType type,
-                                   String title, String message, String link, UUID actorId) {
-        User recipient = userRepository.findById(recipientId)
-                .orElseThrow(() -> new ResourceNotFoundException("Recipient not found"));
-
+    /**
+     * Persists a notification in a dedicated transaction. REQUIRES_NEW is necessary because
+     * this is invoked from {@code @TransactionalEventListener(AFTER_COMMIT)}, where the parent
+     * transaction is already committed and any work attached to its synchronization context
+     * would silently be discarded.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void create(UUID recipientId, UUID actorId, NotificationType type,
+                       String title, String message, String link) {
         Notification notification = new Notification();
-        notification.setUser(recipient);
+        notification.setUser(userRepository.getReferenceById(recipientId));
         notification.setType(type);
         notification.setTitle(title);
         notification.setMessage(message);
         notification.setLink(link);
-
         if (actorId != null) {
-            User actor = userRepository.findById(actorId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Actor not found"));
-            notification.setActor(actor);
+            notification.setActor(userRepository.getReferenceById(actorId));
         }
-
         notificationRepository.save(notification);
     }
 
     @Transactional(readOnly = true)
     public Page<NotificationResponse> getUserNotifications(UUID userId, Pageable pageable) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+        return notificationRepository.findPageWithActor(userId, pageable)
                 .map(this::mapToResponse);
     }
 
@@ -63,10 +65,9 @@ public class NotificationService {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         if (!notification.getUser().getId().equals(userId)) {
-            throw new IllegalArgumentException("Notification does not belong to this user");
+            throw new UnauthorizedException("Notification does not belong to this user");
         }
         notification.setRead(true);
-        notificationRepository.save(notification);
     }
 
     public void markAllAsRead(UUID userId) {

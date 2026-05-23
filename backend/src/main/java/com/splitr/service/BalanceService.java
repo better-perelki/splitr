@@ -1,6 +1,8 @@
 package com.splitr.service;
 
 import com.splitr.dto.*;
+import com.splitr.dto.WalletSummaryResponse.GroupBalance;
+import com.splitr.dto.WalletSummaryResponse.WalletDebt;
 import com.splitr.entity.*;
 import com.splitr.repository.ExpenseRepository;
 import com.splitr.repository.GroupMemberRepository;
@@ -26,6 +28,45 @@ public class BalanceService {
         this.expenseRepository = expenseRepository;
         this.settlementRepository = settlementRepository;
         this.groupMemberRepository = groupMemberRepository;
+    }
+
+    public WalletSummaryResponse getWalletSummary(UUID userId) {
+        BigDecimal totalOwed = BigDecimal.ZERO;
+        BigDecimal totalOwe = BigDecimal.ZERO;
+        List<WalletDebt> debts = new ArrayList<>();
+        List<GroupBalance> groupBalances = new ArrayList<>();
+
+        for (GroupMember membership : groupMemberRepository.findByUserId(userId)) {
+            Group group = membership.getGroup();
+            UUID groupId = group.getId();
+            String currency = group.getCurrency();
+            String groupName = group.getName();
+
+            GroupBalanceResponse balance = calculateBalances(groupId);
+
+            BigDecimal userBalance = balance.memberBalances().stream()
+                    .filter(mb -> mb.user().id().equals(userId))
+                    .map(MemberBalance::balance)
+                    .findFirst()
+                    .orElse(BigDecimal.ZERO);
+            groupBalances.add(new GroupBalance(groupId, userBalance));
+
+            for (BalanceEntry entry : balance.simplifiedDebts()) {
+                if (entry.from().id().equals(userId)) {
+                    totalOwe = totalOwe.add(entry.amount());
+                    debts.add(new WalletDebt(groupId, groupName, currency,
+                            entry.to(), entry.amount(), "owe"));
+                } else if (entry.to().id().equals(userId)) {
+                    totalOwed = totalOwed.add(entry.amount());
+                    debts.add(new WalletDebt(groupId, groupName, currency,
+                            entry.from(), entry.amount(), "owed"));
+                }
+            }
+        }
+
+        debts.sort(Comparator.comparing(WalletDebt::amount).reversed());
+
+        return new WalletSummaryResponse(totalOwed, totalOwe, debts, groupBalances);
     }
 
     public GroupBalanceResponse calculateBalances(UUID groupId) {

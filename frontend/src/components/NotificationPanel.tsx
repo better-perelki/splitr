@@ -54,16 +54,27 @@ export default function NotificationPanel() {
   useEffect(() => {
     pollUnread()
     const interval = setInterval(pollUnread, 30_000)
-    return () => clearInterval(interval)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') pollUnread()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', pollUnread)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', pollUnread)
+    }
   }, [pollUnread])
 
   useEffect(() => {
     if (!open) return
     let cancelled = false
     setLoading(true)
-    fetchNotifications(0, 30)
-      .then((page) => {
-        if (!cancelled) setNotifications(page.content)
+    Promise.all([fetchNotifications(0, 30), fetchUnreadCount()])
+      .then(([page, count]) => {
+        if (cancelled) return
+        setNotifications(page.content)
+        setUnreadCount(count)
       })
       .catch(() => {})
       .finally(() => {
@@ -169,7 +180,6 @@ export default function NotificationPanel() {
                     className={`w-full flex items-start gap-3 px-5 py-3.5 text-left transition-all duration-150 hover:bg-slate-800/50 group ${
                       !n.read ? 'bg-emerald-500/[0.03]' : ''
                     } ${i < notifications.length - 1 ? 'border-b border-slate-800/30' : ''}`}
-                    style={{ animationDelay: `${i * 30}ms` }}
                   >
                     <div
                       className={`flex-shrink-0 mt-0.5 w-9 h-9 rounded-xl flex items-center justify-center ${
