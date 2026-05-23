@@ -81,14 +81,18 @@ public class AuthService {
                 .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
 
         if (storedToken.getExpiresAt().isBefore(Instant.now())) {
-            refreshTokenRepository.delete(storedToken);
+            refreshTokenRepository.deleteByToken(request.refreshToken());
             throw new IllegalArgumentException("Refresh token expired");
         }
 
-        var user = storedToken.getUser();
-        refreshTokenRepository.delete(storedToken);
+        // Atomically claim the token: concurrent requests with the same token
+        // (e.g. React StrictMode double-mount) race on this DELETE; only the
+        // winner (rows affected == 1) is allowed to issue a new token pair.
+        if (refreshTokenRepository.deleteByToken(request.refreshToken()) == 0) {
+            throw new IllegalArgumentException("Invalid refresh token");
+        }
 
-        return buildAuthResponse(user);
+        return buildAuthResponse(storedToken.getUser());
     }
 
     private AuthResponse buildAuthResponse(User user) {
