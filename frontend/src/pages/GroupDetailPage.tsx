@@ -38,7 +38,7 @@ function formatExpenseDate(iso: string) {
 export default function GroupDetailPage() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
-    const [searchParams] = useSearchParams()
+    const [searchParams, setSearchParams] = useSearchParams()
     const initialTab = (searchParams.get('tab') as TabType) || 'expenses'
     const [group, setGroup] = useState<GroupDetailsResponse | null>(null)
     const [expenses, setExpenses] = useState<ExpenseResponse[]>([])
@@ -111,6 +111,18 @@ export default function GroupDetailPage() {
     useEffect(() => {
         fetchBalances()
     }, [fetchBalances])
+
+    const addExpenseRequested = searchParams.get('addExpense') === '1'
+    const drawerOpen = showAddDrawer || addExpenseRequested
+
+    const closeAddDrawer = useCallback(() => {
+        setShowAddDrawer(false)
+        if (searchParams.has('addExpense')) {
+            const next = new URLSearchParams(searchParams)
+            next.delete('addExpense')
+            setSearchParams(next, { replace: true })
+        }
+    }, [searchParams, setSearchParams])
 
     const handleUpdateGroup = async (data: GroupUpdateRequest) => {
         if (!id || !group) return
@@ -481,14 +493,14 @@ export default function GroupDetailPage() {
             />
 
             <AddExpenseDrawer
-                open={showAddDrawer}
-                onClose={() => setShowAddDrawer(false)}
+                open={drawerOpen}
+                onClose={closeAddDrawer}
                 groupId={group.id}
                 members={group.members}
                 currency={group.currency}
                 onSaved={() => {
                     refreshAll()
-                    setShowAddDrawer(false)
+                    closeAddDrawer()
                 }}
             />
 

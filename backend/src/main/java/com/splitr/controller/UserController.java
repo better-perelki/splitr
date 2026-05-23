@@ -1,6 +1,7 @@
 package com.splitr.controller;
 
 import com.splitr.dto.*;
+import com.splitr.service.BalanceService;
 import com.splitr.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
@@ -16,9 +17,11 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final BalanceService balanceService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, BalanceService balanceService) {
         this.userService = userService;
+        this.balanceService = balanceService;
     }
 
     @GetMapping("/me")
@@ -55,6 +58,11 @@ public class UserController {
     @GetMapping("/summary/{id}")
     public UserSummary getUserSummary(@PathVariable("id") UUID id) {
         return userService.getUserSummary(id);
+    }
+
+    @GetMapping("/me/wallet-summary")
+    public WalletSummaryResponse getWalletSummary(Authentication auth) {
+        return balanceService.getWalletSummary(userId(auth));
     }
 
     private UUID userId(Authentication auth) {

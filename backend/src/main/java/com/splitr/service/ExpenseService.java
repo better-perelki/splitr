@@ -2,6 +2,7 @@ package com.splitr.service;
 
 import com.splitr.dto.*;
 import com.splitr.entity.*;
+import com.splitr.event.NotificationEvent;
 import com.splitr.exception.ResourceNotFoundException;
 import com.splitr.exception.UnauthorizedException;
 import com.splitr.repository.ExpenseRepository;
@@ -10,6 +11,7 @@ import com.splitr.repository.UserRepository;
 import com.splitr.service.split.SplitResult;
 import com.splitr.service.split.SplitStrategy;
 import com.splitr.service.split.SplitStrategyFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -33,17 +35,20 @@ public class ExpenseService {
     private final UserRepository userRepository;
     private final SplitStrategyFactory splitStrategyFactory;
     private final FileStorageService fileStorageService;
+    private final ApplicationEventPublisher events;
 
     public ExpenseService(ExpenseRepository expenseRepository,
                           GroupMemberRepository groupMemberRepository,
                           UserRepository userRepository,
                           SplitStrategyFactory splitStrategyFactory,
-                          FileStorageService fileStorageService) {
+                          FileStorageService fileStorageService,
+                          ApplicationEventPublisher events) {
         this.expenseRepository = expenseRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.splitStrategyFactory = splitStrategyFactory;
         this.fileStorageService = fileStorageService;
+        this.events = events;
     }
 
     public ExpenseResponse createExpense(UUID userId, UUID groupId, ExpenseCreateRequest request) {
@@ -73,6 +78,19 @@ public class ExpenseService {
         attachSplits(expense, calculated);
 
         expense = expenseRepository.save(expense);
+
+        UUID groupIdRef = group.getId();
+        String description = expense.getDescription();
+        BigDecimal amount = expense.getAmount();
+        String currency = expense.getCurrency();
+        String actorUsername = creator.getUsername();
+        groupMemberRepository.findByGroupId(groupIdRef).stream()
+                .map(m -> m.getUser().getId())
+                .filter(memberId -> !memberId.equals(userId))
+                .forEach(memberId -> events.publishEvent(new NotificationEvent.ExpenseAdded(
+                        memberId, userId, groupIdRef, actorUsername, description, amount, currency
+                )));
+
         return mapToResponse(expense);
     }
 

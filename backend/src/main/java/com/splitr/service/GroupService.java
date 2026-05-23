@@ -2,11 +2,13 @@ package com.splitr.service;
 
 import com.splitr.dto.*;
 import com.splitr.entity.*;
+import com.splitr.event.NotificationEvent;
 import com.splitr.exception.ResourceNotFoundException;
 import com.splitr.exception.UnauthorizedException;
 import com.splitr.repository.GroupMemberRepository;
 import com.splitr.repository.GroupRepository;
 import com.splitr.repository.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
 @Service
 @Transactional
 public class GroupService {
@@ -26,17 +29,20 @@ public class GroupService {
     private final UserRepository userRepository;
     private final FriendService friendService;
     private final BalanceService balanceService;
+    private final ApplicationEventPublisher events;
 
     public GroupService(GroupRepository groupRepository,
                         GroupMemberRepository groupMemberRepository,
                         UserRepository userRepository,
                         FriendService friendService,
-                        @Lazy BalanceService balanceService) {
+                        @Lazy BalanceService balanceService,
+                        ApplicationEventPublisher events) {
         this.groupRepository = groupRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.friendService = friendService;
         this.balanceService = balanceService;
+        this.events = events;
     }
 
     public GroupResponse createGroup(UUID userId, GroupCreateRequest request) {
@@ -129,6 +135,8 @@ public class GroupService {
 
         User newUser = userRepository.findById(userToAddId)
                 .orElseThrow(() -> new ResourceNotFoundException("User to add not found"));
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         GroupMember member = new GroupMember();
         member.setUser(newUser);
@@ -136,6 +144,14 @@ public class GroupService {
         member.setRole(GroupRole.MEMBER);
 
         groupMemberRepository.save(member);
+
+        events.publishEvent(new NotificationEvent.GroupMemberAdded(
+                userToAddId,
+                currentUserId,
+                groupId,
+                currentUser.getUsername(),
+                group.getName()
+        ));
     }
 
     public void removeMember(UUID currentUserId, UUID groupId, UUID targetUserId) {

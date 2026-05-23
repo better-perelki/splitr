@@ -1,13 +1,15 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import Icon from './Icon'
+import NotificationPanel from './NotificationPanel'
+import WalletPanel from './WalletPanel'
+import AddExpensePopover from './AddExpensePopover'
 
 const navItems = [
   { to: '/', icon: 'dashboard', label: 'Dashboard' },
   { to: '/groups', icon: 'group', label: 'Groups' },
   { to: '/friends', icon: 'person_add', label: 'Friends' },
   { to: '/analytics', icon: 'insights', label: 'Analytics' },
-  { to: '/settings', icon: 'settings', label: 'Settings' },
   { to: '/profile', icon: 'account_circle', label: 'Profile' },
 ]
 
@@ -16,17 +18,13 @@ const breadcrumbMap: Record<string, string> = {
   '/groups': 'Groups',
   '/friends': 'Social Hub',
   '/analytics': 'Financial Insights',
-  '/settings': 'Settings',
-  '/profile': 'Settings / Profile',
+  '/profile': 'Profile',
 }
 
 export default function Layout() {
   const location = useLocation()
-  const navigate = useNavigate()
   const { logout } = useAuth()
   const breadcrumb = breadcrumbMap[location.pathname] ?? ''
-
-  const goToGroups = () => navigate('/groups')
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -55,13 +53,7 @@ export default function Layout() {
           ))}
         </nav>
 
-        <div className="px-6 mt-auto space-y-3">
-          <button
-            onClick={goToGroups}
-            className="w-full py-4 bg-primary-container text-on-primary-container rounded-xl font-headline font-bold text-sm tracking-tight hover:brightness-110 active:scale-95 transition-all"
-          >
-            + Add Expense
-          </button>
+        <div className="px-6 mt-auto">
           <button
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 py-3 text-sm text-slate-400 hover:text-error font-medium rounded-xl hover:bg-error/5 transition-all"
@@ -76,18 +68,9 @@ export default function Layout() {
         <header className="flex items-center justify-between px-12 h-20 bg-slate-950/60 backdrop-blur-md sticky top-0 z-40">
           <span className="font-headline text-sm uppercase tracking-widest text-slate-400">{breadcrumb}</span>
           <div className="flex items-center gap-6">
-            <button className="text-slate-400 hover:opacity-80 transition-opacity">
-              <Icon name="notifications" />
-            </button>
-            <button className="text-slate-400 hover:opacity-80 transition-opacity">
-              <Icon name="account_balance_wallet" />
-            </button>
-            <button
-              onClick={goToGroups}
-              className="ml-2 px-6 py-2 bg-primary-container text-on-primary-container font-bold rounded-xl text-xs uppercase tracking-widest hover:brightness-110 active:scale-95 transition-all"
-            >
-              Add Expense
-            </button>
+            <NotificationPanel />
+            <WalletPanel />
+            <AddExpensePopover />
           </div>
         </header>
 

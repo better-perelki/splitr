@@ -4,7 +4,7 @@ import Icon from '../components/Icon'
 import { useAuth } from '../contexts/AuthContext'
 import GroupModal from '../components/GroupModal'
 import { groupsApi, type GroupResponse, type GroupCreateRequest } from '../api/groups'
-import { balancesApi, type GroupBalanceResponse } from '../api/balances'
+import { useWalletSummary } from '../hooks/useWalletSummary'
 
 const TYPE_ICONS: Record<string, string> = {
   TRIP: 'landscape',
@@ -18,21 +18,10 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [groups, setGroups] = useState<GroupResponse[]>([])
-  const [allBalances, setAllBalances] = useState<Map<string, GroupBalanceResponse>>(new Map())
+  const { totalOwed, totalOwe, debts, groupBalances } = useWalletSummary()
 
   useEffect(() => {
-    groupsApi.list()
-      .then(data => {
-        setGroups(data)
-        data.forEach(g => {
-          balancesApi.get(g.id)
-            .then(b => {
-              setAllBalances(prev => new Map(prev).set(g.id, b))
-            })
-            .catch(() => { })
-        })
-      })
-      .catch(() => { })
+    groupsApi.list().then(setGroups).catch(() => {})
   }, [])
 
   const handleCreateGroup = async (data: GroupCreateRequest) => {
@@ -51,39 +40,13 @@ export default function DashboardPage() {
     }
   }
 
-  const currentUserId = user?.id ?? ''
+  const recentDebts = useMemo(() => debts.slice(0, 5), [debts])
 
-  const { totalOwed, totalOwe, recentDebts } = useMemo(() => {
-    let owed = 0
-    let owe = 0
-    const debts: { from: string; to: string; amount: number; currency: string; groupName: string; groupId: string; type: 'owe' | 'owed' }[] = []
-
-    for (const [groupId, balance] of allBalances.entries()) {
-      const group = groups.find(g => g.id === groupId)
-      const groupName = group?.name ?? 'Group'
-      const currency = group?.currency ?? 'PLN'
-
-      for (const debt of balance.simplifiedDebts) {
-        if (debt.from.id === currentUserId) {
-          owe += debt.amount
-          debts.push({ from: debt.from.username, to: debt.to.username, amount: debt.amount, currency, groupName, groupId, type: 'owe' })
-        }
-        if (debt.to.id === currentUserId) {
-          owed += debt.amount
-          debts.push({ from: debt.from.username, to: debt.to.username, amount: debt.amount, currency, groupName, groupId, type: 'owed' })
-        }
-      }
-    }
-
-    return { totalOwed: owed, totalOwe: owe, recentDebts: debts.slice(0, 5) }
-  }, [allBalances, groups, currentUserId])
-
-  const getGroupBalance = (groupId: string): number => {
-    const balance = allBalances.get(groupId)
-    if (!balance) return 0
-    const member = balance.memberBalances.find(m => m.user.id === currentUserId)
-    return member?.balance ?? 0
-  }
+  const groupBalanceMap = useMemo(
+    () => new Map(groupBalances.map(g => [g.groupId, g.balance])),
+    [groupBalances],
+  )
+  const getGroupBalance = (groupId: string): number => groupBalanceMap.get(groupId) ?? 0
 
   return (
     <div className="p-12 min-h-screen relative overflow-hidden">
@@ -168,9 +131,9 @@ export default function DashboardPage() {
             </div>
           )}
           <div className="space-y-4">
-            {recentDebts.map((entry, i) => (
+            {recentDebts.map((entry) => (
               <div
-                key={i}
+                key={`${entry.groupId}-${entry.counterparty.id}-${entry.type}`}
                 onClick={() => navigate(`/groups/${entry.groupId}?tab=balances`)}
                 className="glass-card p-5 rounded-2xl flex items-center justify-between group hover:bg-surface-container-high/60 transition-all duration-300 cursor-pointer"
               >
@@ -181,7 +144,7 @@ export default function DashboardPage() {
                         ? 'bg-primary/10 border-2 border-primary/20 text-primary'
                         : 'bg-error/10 border-2 border-error/20 text-error'
                     }`}>
-                      {entry.type === 'owed' ? entry.from[0].toUpperCase() : entry.to[0].toUpperCase()}
+                      {entry.counterparty.username?.[0]?.toUpperCase() ?? '?'}
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-surface-container-highest border-2 border-surface flex items-center justify-center">
                       <Icon
@@ -192,7 +155,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h4 className="font-bold text-on-surface">
-                      {entry.type === 'owed' ? entry.from : entry.to}
+                      {entry.counterparty.username}
                     </h4>
                     <p className="text-sm text-on-surface-variant">
                       {entry.groupName}

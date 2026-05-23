@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import Icon from '../components/Icon'
+import DateRangePicker from '../components/DateRangePicker'
 import { analyticsApi, type GlobalAnalyticsResponse } from '../api/analytics'
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -192,22 +193,14 @@ export default function AnalyticsPage() {
                         </button>
                     </div>
                     {preset === 'custom' && (
-                        <div className="flex items-center gap-3 animate-fadeIn">
-                            <input
-                                type="date"
-                                value={customFrom}
-                                max={customTo || new Date().toISOString().slice(0, 10)}
-                                onChange={(e) => setCustomFrom(e.target.value)}
-                                className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"
-                            />
-                            <span className="text-on-surface-variant text-sm">→</span>
-                            <input
-                                type="date"
-                                value={customTo}
-                                min={customFrom || undefined}
-                                max={new Date().toISOString().slice(0, 10)}
-                                onChange={(e) => setCustomTo(e.target.value)}
-                                className="bg-surface-container-low border border-outline-variant/20 rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary focus:outline-none"
+                        <div className="animate-fadeIn">
+                            <DateRangePicker
+                                from={customFrom}
+                                to={customTo}
+                                onChange={(f, t) => {
+                                    setCustomFrom(f)
+                                    setCustomTo(t)
+                                }}
                             />
                         </div>
                     )}
