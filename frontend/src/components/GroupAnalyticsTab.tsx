@@ -269,7 +269,7 @@ export default function GroupAnalyticsTab({ groupId, currency }: Props) {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex-1 w-full space-y-3">
+                                    <div className="flex-1 min-w-0 w-full space-y-3">
                                         {data.categoryBreakdown.map((cat, i) => (
                                             <div key={cat.category} className="flex items-center gap-3">
                                                 <div

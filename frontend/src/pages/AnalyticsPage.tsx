@@ -307,7 +307,7 @@ export default function AnalyticsPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex-1 w-full space-y-4">
+                                    <div className="flex-1 min-w-0 w-full space-y-4">
                                         {data.categoryBreakdown.map((cat, i) => (
                                             <div key={cat.category} className="flex items-center gap-3">
                                                 <div
