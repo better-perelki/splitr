@@ -344,8 +344,20 @@ export default function GroupDetailPage() {
                                                     <div className="flex items-center gap-10">
                                                         <div className="text-right">
                                                             <div className="font-headline text-xl font-bold">
-                                                                {item.amount.toFixed(2)}{' '}
-                                                                <span className="text-sm opacity-50">{item.currency}</span>
+                                                                {item.currency !== group.currency && item.convertedAmount != null ? (
+                                                                    <>
+                                                                        {item.convertedAmount.toFixed(2)}{' '}
+                                                                        <span className="text-sm opacity-50">{group.currency}</span>
+                                                                        <div className="text-xs font-medium text-on-surface-variant opacity-70">
+                                                                            ({item.amount.toFixed(2)} {item.currency})
+                                                                        </div>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        {item.amount.toFixed(2)}{' '}
+                                                                        <span className="text-sm opacity-50">{item.currency}</span>
+                                                                    </>
+                                                                )}
                                                             </div>
                                                             <div
                                                                 className={`text-xs font-medium ${
@@ -470,7 +482,7 @@ export default function GroupDetailPage() {
                                     Total Spent
                                 </div>
                                 <div className="font-headline font-bold text-lg">
-                                    {expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}{' '}
+                                    {expenses.reduce((s, e) => s + (e.convertedAmount ?? e.amount), 0).toFixed(2)}{' '}
                                     <span className="text-xs opacity-50">{group.currency}</span>
                                 </div>
                             </div>

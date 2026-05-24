@@ -9,6 +9,7 @@ import {
     type SplitInput,
     type SplitType,
 } from '../api/expenses'
+import { exchangeRatesApi } from '../api/exchangeRates'
 import type { GroupMemberResponse } from '../api/groups'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -94,6 +95,10 @@ export default function AddExpenseDrawer({
     const [dragOver, setDragOver] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
+    const [selectedCurrency, setSelectedCurrency] = useState(currency)
+    const [supportedCurrencies, setSupportedCurrencies] = useState<string[]>([currency])
+    const [convertedPreview, setConvertedPreview] = useState<{ amount: number; rate: number } | null>(null)
+    const [isConverting, setIsConverting] = useState(false)
 
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -104,9 +109,35 @@ export default function AddExpenseDrawer({
     const totalNumber = parseNum(amount)
 
     useEffect(() => {
+        exchangeRatesApi.supportedCurrencies()
+            .then(res => {
+                const currs = new Set(res.currencies)
+                currs.add(currency)
+                setSupportedCurrencies(Array.from(currs))
+            })
+            .catch(() => {})
+    }, [currency])
+
+    useEffect(() => {
+        if (selectedCurrency === currency || !totalNumber) {
+            setConvertedPreview(null)
+            return
+        }
+        const timeout = setTimeout(() => {
+            setIsConverting(true)
+            exchangeRatesApi.convert(selectedCurrency, currency, totalNumber, expenseDate)
+                .then(res => setConvertedPreview({ amount: res.convertedAmount, rate: res.rate }))
+                .catch(() => setConvertedPreview(null))
+                .finally(() => setIsConverting(false))
+        }, 300)
+        return () => clearTimeout(timeout)
+    }, [totalNumber, selectedCurrency, currency, expenseDate])
+
+    useEffect(() => {
         if (!open) return
         if (expense) {
             setAmount(String(expense.amount))
+            setSelectedCurrency(expense.currency)
             setDescription(expense.description)
             setExpenseDate(expense.expenseDate)
             setCategory(expense.category)
@@ -136,6 +167,7 @@ export default function AddExpenseDrawer({
             setSplits(nextSplits)
         } else {
             setAmount('')
+            setSelectedCurrency(currency)
             setDescription('')
             setExpenseDate(todayIso())
             setCategory('FOOD')
@@ -328,7 +360,7 @@ export default function AddExpenseDrawer({
 
         return {
             amount: totalNumber,
-            currency,
+            currency: selectedCurrency,
             description: description.trim(),
             expenseDate,
             category,
@@ -367,7 +399,7 @@ export default function AddExpenseDrawer({
             case 'PERCENTAGE':
                 return `Percentages must sum to 100`
             case 'EXACT':
-                return `Amounts must sum to ${totalNumber.toFixed(2)} ${currency}`
+                return `Amounts must sum to ${totalNumber.toFixed(2)} ${selectedCurrency}`
             case 'SHARES':
                 return 'Weights are scaled proportionally (e.g. adult=1, child=0.5)'
             case 'ADJUSTMENT':
@@ -402,17 +434,28 @@ export default function AddExpenseDrawer({
                         </h2>
                     </div>
                     <span className="text-[10px] font-headline uppercase tracking-widest font-bold text-primary-fixed-dim">
-                        {currency}
+                        {selectedCurrency}
                     </span>
                 </header>
 
                 <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-12 space-y-8">
                     <section className="space-y-2">
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold ml-1">
-                            Amount
-                        </label>
+                        <div className="flex items-center justify-between ml-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-bold">
+                                Amount
+                            </label>
+                            <select
+                                value={selectedCurrency}
+                                onChange={(e) => setSelectedCurrency(e.target.value)}
+                                className="bg-surface-container-low text-on-surface text-xs font-bold rounded-lg px-2 py-1 border-none focus:ring-0 cursor-pointer hover:bg-surface-container-high transition-colors"
+                            >
+                                {supportedCurrencies.map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
                         <div className="flex items-baseline gap-2">
-                            <span className="text-4xl font-headline font-light text-primary/50">{currency}</span>
+                            <span className="text-4xl font-headline font-light text-primary/50">{selectedCurrency}</span>
                             <input
                                 autoFocus
                                 inputMode="decimal"
@@ -422,6 +465,19 @@ export default function AddExpenseDrawer({
                                 className="w-full bg-transparent border-none text-5xl font-headline font-bold text-on-surface focus:ring-0 focus:outline-none placeholder:text-surface-variant"
                             />
                         </div>
+                        {selectedCurrency !== currency && (
+                            <div className="text-xs font-medium text-on-surface-variant ml-1 h-4 flex items-center">
+                                {isConverting ? (
+                                    <span className="animate-pulse">Converting...</span>
+                                ) : convertedPreview ? (
+                                    <span>
+                                        ≈ {convertedPreview.amount.toFixed(2)} {currency} (@ {convertedPreview.rate})
+                                    </span>
+                                ) : (
+                                    <span className="text-error/70">Conversion unavailable</span>
+                                )}
+                            </div>
+                        )}
                     </section>
 
                     <section className="grid grid-cols-2 gap-4">
@@ -504,7 +560,7 @@ export default function AddExpenseDrawer({
                                     Math.abs(payersTotal - totalNumber) < 0.01 ? 'text-primary' : 'text-on-surface-variant'
                                 }`}
                             >
-                                {payersTotal.toFixed(2)} / {totalNumber.toFixed(2)} {currency}
+                                {payersTotal.toFixed(2)} / {totalNumber.toFixed(2)} {selectedCurrency}
                             </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -560,7 +616,7 @@ export default function AddExpenseDrawer({
                                     Math.abs(splitsTotal - totalNumber) < 0.01 ? 'text-primary' : 'text-on-surface-variant'
                                 }`}
                             >
-                                {splitsTotal.toFixed(2)} / {totalNumber.toFixed(2)} {currency}
+                                {splitsTotal.toFixed(2)} / {totalNumber.toFixed(2)} {selectedCurrency}
                             </span>
                         </div>
                         <div className="flex bg-surface-container-low p-1 rounded-xl">

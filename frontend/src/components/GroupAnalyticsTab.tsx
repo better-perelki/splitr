@@ -231,7 +231,7 @@ export default function GroupAnalyticsTab({ groupId, currency }: Props) {
                                     <p className="text-sm opacity-60">No data for this period</p>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between gap-6 overflow-hidden">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
                                     <div className="relative w-44 h-44 flex items-center justify-center flex-shrink-0">
                                         <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                                             <circle
@@ -269,9 +269,9 @@ export default function GroupAnalyticsTab({ groupId, currency }: Props) {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex-1 min-w-0 space-y-3 overflow-hidden">
+                                    <div className="flex-1 w-full space-y-3">
                                         {data.categoryBreakdown.map((cat, i) => (
-                                            <div key={cat.category} className="flex items-center gap-3 min-w-0 overflow-hidden">
+                                            <div key={cat.category} className="flex items-center gap-3">
                                                 <div
                                                     className="w-2 h-2 rounded-full flex-shrink-0"
                                                     style={{

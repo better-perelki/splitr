@@ -36,19 +36,22 @@ public class ExpenseService {
     private final SplitStrategyFactory splitStrategyFactory;
     private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher events;
+    private final ExchangeRateService exchangeRateService;
 
     public ExpenseService(ExpenseRepository expenseRepository,
                           GroupMemberRepository groupMemberRepository,
                           UserRepository userRepository,
                           SplitStrategyFactory splitStrategyFactory,
                           FileStorageService fileStorageService,
-                          ApplicationEventPublisher events) {
+                          ApplicationEventPublisher events,
+                          ExchangeRateService exchangeRateService) {
         this.expenseRepository = expenseRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.splitStrategyFactory = splitStrategyFactory;
         this.fileStorageService = fileStorageService;
         this.events = events;
+        this.exchangeRateService = exchangeRateService;
     }
 
     public ExpenseResponse createExpense(UUID userId, UUID groupId, ExpenseCreateRequest request) {
@@ -68,11 +71,15 @@ public class ExpenseService {
         expense.setCreatedBy(creator);
         expense.setDescription(request.description());
         expense.setAmount(request.amount());
-        expense.setCurrency(request.currency() != null ? request.currency() : group.getCurrency());
+        String expenseCurrency = request.currency() != null ? request.currency() : group.getCurrency();
+        expense.setCurrency(expenseCurrency);
         expense.setCategory(request.category());
         expense.setExpenseDate(request.expenseDate());
         expense.setSplitType(request.splitType());
         expense.setNotes(request.notes());
+
+        // Currency conversion
+        applyConversion(expense, group.getCurrency());
 
         attachPayers(expense, request.payers());
         attachSplits(expense, calculated);
@@ -130,11 +137,15 @@ public class ExpenseService {
 
         expense.setDescription(request.description());
         expense.setAmount(request.amount());
-        expense.setCurrency(request.currency() != null ? request.currency() : expense.getCurrency());
+        String updatedCurrency = request.currency() != null ? request.currency() : expense.getCurrency();
+        expense.setCurrency(updatedCurrency);
         expense.setCategory(request.category());
         expense.setExpenseDate(request.expenseDate());
         expense.setSplitType(request.splitType());
         expense.setNotes(request.notes());
+
+        // Recalculate conversion
+        applyConversion(expense, expense.getGroup().getCurrency());
 
         expense.getPayers().clear();
         expense.getSplits().clear();
@@ -256,6 +267,27 @@ public class ExpenseService {
         return map;
     }
 
+    private void applyConversion(Expense expense, String groupCurrency) {
+        expense.setGroupCurrency(groupCurrency);
+        if (expense.getCurrency().equalsIgnoreCase(groupCurrency)) {
+            expense.setConvertedAmount(expense.getAmount());
+            expense.setExchangeRate(BigDecimal.ONE);
+        } else {
+            try {
+                BigDecimal rate = exchangeRateService.getRate(
+                        expense.getCurrency(), groupCurrency, expense.getExpenseDate());
+                expense.setExchangeRate(rate);
+                expense.setConvertedAmount(
+                        exchangeRateService.convert(expense.getAmount(),
+                                expense.getCurrency(), groupCurrency, expense.getExpenseDate()));
+            } catch (IllegalStateException e) {
+                // If no rate available, store null and log warning
+                expense.setConvertedAmount(null);
+                expense.setExchangeRate(null);
+            }
+        }
+    }
+
     private ExpenseResponse mapToResponse(Expense expense) {
         List<ExpensePayerResponse> payers = expense.getPayers().stream()
                 .map(p -> new ExpensePayerResponse(toUserSummary(p.getUser()), p.getAmount()))
@@ -274,6 +306,9 @@ public class ExpenseService {
                 expense.getDescription(),
                 expense.getAmount(),
                 expense.getCurrency(),
+                expense.getConvertedAmount(),
+                expense.getExchangeRate(),
+                expense.getGroupCurrency(),
                 expense.getCategory(),
                 expense.getExpenseDate(),
                 expense.getSplitType(),

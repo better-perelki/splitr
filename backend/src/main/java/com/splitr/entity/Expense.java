@@ -51,6 +51,15 @@ public class Expense {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "converted_amount", precision = 18, scale = 2)
+    private BigDecimal convertedAmount;
+
+    @Column(name = "exchange_rate", precision = 18, scale = 8)
+    private BigDecimal exchangeRate;
+
+    @Column(name = "group_currency", length = 3)
+    private String groupCurrency;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -116,4 +125,13 @@ public class Expense {
 
     public List<ExpenseSplit> getSplits() { return splits; }
     public void setSplits(List<ExpenseSplit> splits) { this.splits = splits; }
+
+    public BigDecimal getConvertedAmount() { return convertedAmount; }
+    public void setConvertedAmount(BigDecimal convertedAmount) { this.convertedAmount = convertedAmount; }
+
+    public BigDecimal getExchangeRate() { return exchangeRate; }
+    public void setExchangeRate(BigDecimal exchangeRate) { this.exchangeRate = exchangeRate; }
+
+    public String getGroupCurrency() { return groupCurrency; }
+    public void setGroupCurrency(String groupCurrency) { this.groupCurrency = groupCurrency; }
 }

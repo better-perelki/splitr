@@ -97,11 +97,24 @@ export default function ExpenseDetailModal({ expense, onClose, onChanged, groupI
                 </div>
 
                 <div className="relative px-8 pb-8 space-y-6">
-                    <div className="flex items-baseline gap-2">
-                        <span className="font-headline text-4xl font-bold text-primary">
-                            {expense.amount.toFixed(2)}
-                        </span>
-                        <span className="text-sm text-on-surface-variant font-bold">{expense.currency}</span>
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-baseline gap-2">
+                            <span className="font-headline text-4xl font-bold text-primary">
+                                {expense.currency !== currency && expense.convertedAmount != null
+                                    ? expense.convertedAmount.toFixed(2)
+                                    : expense.amount.toFixed(2)}
+                            </span>
+                            <span className="text-sm text-on-surface-variant font-bold">
+                                {expense.currency !== currency && expense.convertedAmount != null
+                                    ? currency
+                                    : expense.currency}
+                            </span>
+                        </div>
+                        {expense.currency !== currency && expense.convertedAmount != null && (
+                            <div className="text-sm font-medium text-on-surface-variant opacity-70">
+                                Original: {expense.amount.toFixed(2)} {expense.currency} (Rate: {expense.exchangeRate})
+                            </div>
+                        )}
                     </div>
 
                     {expense.receiptUrl && (

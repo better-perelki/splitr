@@ -78,7 +78,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="font-headline text-4xl font-bold text-primary mb-2">
-                {totalOwed.toFixed(2)}
+                {totalOwed.toFixed(2)} PLN
               </div>
               <p className="text-sm text-on-surface-variant">
                 {totalOwed > 0 ? 'across your groups' : 'No one owes you'}
@@ -103,7 +103,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="font-headline text-4xl font-bold text-error mb-2">
-                {totalOwe.toFixed(2)}
+                {totalOwe.toFixed(2)} PLN
               </div>
               <p className="text-sm text-on-surface-variant">
                 {totalOwe > 0 ? 'across your groups' : "You're all settled!"}

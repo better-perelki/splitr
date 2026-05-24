@@ -93,14 +93,18 @@ public class BalanceService {
 
         List<Expense> expenses = expenseRepository.findByGroupId(groupId);
         for (Expense expense : expenses) {
+            BigDecimal rate = expense.getExchangeRate() != null ? expense.getExchangeRate() : BigDecimal.ONE;
+
             for (ExpensePayer payer : expense.getPayers()) {
                 UUID userId = payer.getUser().getId();
-                balances.merge(userId, payer.getAmount(), BigDecimal::add);
+                BigDecimal converted = payer.getAmount().multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
+                balances.merge(userId, converted, BigDecimal::add);
             }
 
             for (ExpenseSplit split : expense.getSplits()) {
                 UUID userId = split.getUser().getId();
-                balances.merge(userId, split.getAmount().negate(), BigDecimal::add);
+                BigDecimal converted = split.getAmount().multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
+                balances.merge(userId, converted.negate(), BigDecimal::add);
             }
         }
 

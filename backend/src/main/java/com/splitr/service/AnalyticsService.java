@@ -51,7 +51,7 @@ public class AnalyticsService {
         }
 
         BigDecimal totalSpent = allExpenses.stream()
-                .map(Expense::getAmount)
+                .map(e -> e.getConvertedAmount() != null ? e.getConvertedAmount() : e.getAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Compute youOwe / owedToYou across all groups
@@ -93,7 +93,7 @@ public class AnalyticsService {
         List<Expense> expenses = expenseRepository.findByGroupIdAndExpenseDateBetween(groupId, from, to);
 
         BigDecimal totalSpent = expenses.stream()
-                .map(Expense::getAmount)
+                .map(e -> e.getConvertedAmount() != null ? e.getConvertedAmount() : e.getAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<CategoryStat> categoryBreakdown = buildCategoryBreakdown(expenses, totalSpent);
@@ -106,7 +106,8 @@ public class AnalyticsService {
     private List<CategoryStat> buildCategoryBreakdown(List<Expense> expenses, BigDecimal totalSpent) {
         Map<ExpenseCategory, BigDecimal> byCategory = new EnumMap<>(ExpenseCategory.class);
         for (Expense expense : expenses) {
-            byCategory.merge(expense.getCategory(), expense.getAmount(), BigDecimal::add);
+            BigDecimal amt = expense.getConvertedAmount() != null ? expense.getConvertedAmount() : expense.getAmount();
+            byCategory.merge(expense.getCategory(), amt, BigDecimal::add);
         }
 
         return byCategory.entrySet().stream()
@@ -134,7 +135,8 @@ public class AnalyticsService {
 
         for (Expense expense : expenses) {
             YearMonth ym = YearMonth.from(expense.getExpenseDate());
-            byMonth.merge(ym, expense.getAmount(), BigDecimal::add);
+            BigDecimal amt = expense.getConvertedAmount() != null ? expense.getConvertedAmount() : expense.getAmount();
+            byMonth.merge(ym, amt, BigDecimal::add);
         }
 
         return byMonth.entrySet().stream()
@@ -147,9 +149,11 @@ public class AnalyticsService {
         Map<UUID, User> payerUsers = new HashMap<>();
 
         for (Expense expense : expenses) {
+            BigDecimal rate = expense.getExchangeRate() != null ? expense.getExchangeRate() : BigDecimal.ONE;
             for (ExpensePayer payer : expense.getPayers()) {
                 UUID uid = payer.getUser().getId();
-                byPayer.merge(uid, payer.getAmount(), BigDecimal::add);
+                BigDecimal converted = payer.getAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
+                byPayer.merge(uid, converted, BigDecimal::add);
                 payerUsers.putIfAbsent(uid, payer.getUser());
             }
         }

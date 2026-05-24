@@ -109,21 +109,21 @@ export default function AnalyticsPage() {
         return [
             {
                 label: 'Total Spent',
-                value: data.totalSpent.toFixed(2),
+                value: `${data.totalSpent.toFixed(2)} PLN`,
                 icon: 'analytics',
                 iconColor: 'text-primary',
                 highlight: true,
             },
             {
                 label: 'You Owe',
-                value: data.youOwe.toFixed(2),
+                value: `${data.youOwe.toFixed(2)} PLN`,
                 icon: 'outbound',
                 iconColor: 'text-error',
                 valueColor: data.youOwe > 0 ? 'text-error' : undefined,
             },
             {
                 label: 'Owed to You',
-                value: data.owedToYou.toFixed(2),
+                value: `${data.owedToYou.toFixed(2)} PLN`,
                 icon: 'account_balance_wallet',
                 iconColor: 'text-primary',
                 valueColor: 'text-primary',
@@ -269,7 +269,7 @@ export default function AnalyticsPage() {
                                     <p className="text-sm opacity-60">No data for this period</p>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between gap-8 overflow-hidden">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-8">
                                     <div className="relative w-48 h-48 flex items-center justify-center flex-shrink-0">
                                         <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                                             <circle
@@ -299,17 +299,17 @@ export default function AnalyticsPage() {
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                                             <span className="text-2xl font-headline font-bold">
                                                 {data.totalSpent >= 1000
-                                                    ? `${(data.totalSpent / 1000).toFixed(1)}k`
-                                                    : data.totalSpent.toFixed(0)}
+                                                    ? `${(data.totalSpent / 1000).toFixed(1)}k PLN`
+                                                    : `${data.totalSpent.toFixed(0)} PLN`}
                                             </span>
                                             <span className="text-[10px] uppercase text-on-surface-variant tracking-widest">
                                                 Total
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex-1 min-w-0 space-y-4 overflow-hidden">
+                                    <div className="flex-1 w-full space-y-4">
                                         {data.categoryBreakdown.map((cat, i) => (
-                                            <div key={cat.category} className="flex items-center gap-3 min-w-0 overflow-hidden">
+                                            <div key={cat.category} className="flex items-center gap-3">
                                                 <div
                                                     className="w-2 h-2 rounded-full flex-shrink-0"
                                                     style={{
@@ -362,7 +362,7 @@ export default function AnalyticsPage() {
                                                 className="flex-1 flex flex-col items-center gap-4 group"
                                             >
                                                 <div className="text-[10px] font-bold text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {m.amount.toFixed(0)}
+                                                    {m.amount.toFixed(0)} PLN
                                                 </div>
                                                 <div className="w-full flex-1 flex items-end">
                                                     <div
@@ -459,7 +459,7 @@ export default function AnalyticsPage() {
                                                                 isTop ? 'text-primary' : 'text-on-surface'
                                                             }`}
                                                         >
-                                                            {sp.amount.toFixed(2)}
+                                                            {sp.amount.toFixed(2)} PLN
                                                         </span>
                                                     </div>
                                                     <div className="w-full h-2 bg-surface-container-low rounded-full overflow-hidden">
