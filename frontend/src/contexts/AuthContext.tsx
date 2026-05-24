@@ -37,6 +37,10 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
+type RefreshResponse = { accessToken: string; refreshToken: string; user: UserProfile }
+
+let initialRefresh: Promise<RefreshResponse> | null = null
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
@@ -52,18 +56,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const rt = getRefreshToken()
-    if (rt) {
-      api
-        .post<{ accessToken: string; refreshToken: string; user: UserProfile }>('/auth/refresh-token', { refreshToken: rt })
-        .then(({ data }) => {
-          setTokens(data.accessToken, data.refreshToken)
-          setUser(data.user)
-        })
-        .catch(() => clearTokens())
-        .finally(() => setLoading(false))
-    } else {
+    if (!rt) {
       setLoading(false)
+      return
     }
+    if (!initialRefresh) {
+      initialRefresh = api
+        .post<RefreshResponse>('/auth/refresh-token', { refreshToken: rt })
+        .then(({ data }) => data)
+    }
+    initialRefresh
+      .then((data) => {
+        setTokens(data.accessToken, data.refreshToken)
+        setUser(data.user)
+      })
+      .catch(() => clearTokens())
+      .finally(() => setLoading(false))
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
