@@ -85,9 +85,6 @@ public class AuthService {
             throw new IllegalArgumentException("Refresh token expired");
         }
 
-        // Atomically claim the token: concurrent requests with the same token
-        // (e.g. React StrictMode double-mount) race on this DELETE; only the
-        // winner (rows affected == 1) is allowed to issue a new token pair.
         if (refreshTokenRepository.deleteByToken(request.refreshToken()) == 0) {
             throw new IllegalArgumentException("Invalid refresh token");
         }

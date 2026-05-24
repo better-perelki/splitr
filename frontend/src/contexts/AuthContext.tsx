@@ -39,9 +39,6 @@ const AuthContext = createContext<AuthState | null>(null)
 
 type RefreshResponse = { accessToken: string; refreshToken: string; user: UserProfile }
 
-// Module-scoped so React StrictMode's double-mounted effect reuses the same
-// in-flight request instead of firing a duplicate (which would race on the
-// backend and invalidate the freshly-rotated token).
 let initialRefresh: Promise<RefreshResponse> | null = null
 
 export function AuthProvider({ children }: { children: ReactNode }) {
