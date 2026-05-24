@@ -18,12 +18,13 @@ interface GroupModalProps {
   onClose: () => void
   onSubmit: (data: GroupCreateRequest | GroupUpdateRequest) => Promise<void>
   editGroup?: GroupResponse | null
+  defaultCurrency?: string
 }
 
-export default function GroupModal({ isOpen, onClose, onSubmit, editGroup }: GroupModalProps) {
+export default function GroupModal({ isOpen, onClose, onSubmit, editGroup, defaultCurrency }: GroupModalProps) {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🏔️')
-  const [currency, setCurrency] = useState('PLN')
+  const [currency, setCurrency] = useState(defaultCurrency ?? 'PLN')
   const [type, setType] = useState<GroupType>('TRIP')
   const [submitting, setSubmitting] = useState(false)
 
@@ -44,10 +45,10 @@ export default function GroupModal({ isOpen, onClose, onSubmit, editGroup }: Gro
     } else {
       setName('')
       setIcon('🏔️')
-      setCurrency('PLN')
+      setCurrency(defaultCurrency ?? 'PLN')
       setType('TRIP')
     }
-  }, [editGroup, isOpen])
+  }, [editGroup, isOpen, defaultCurrency])
 
   // Obsługa zamykania dropdownów po kliknięciu poza nimi
   useEffect(() => {

@@ -26,7 +26,7 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
         return new UserProfileResponse(
                 user.getId(), user.getEmail(), user.getPhone(), user.getUsername(),
-                user.getAvatarUrl(), user.getDefaultCurrency(), user.getTimezone(),
+                user.getAvatarUrl(), user.getDefaultCurrency(),
                 user.getCreatedAt());
     }
 
@@ -43,12 +43,11 @@ public class UserService {
         }
         if (request.phone() != null) user.setPhone(request.phone().isBlank() ? null : request.phone());
         if (request.defaultCurrency() != null) user.setDefaultCurrency(request.defaultCurrency());
-        if (request.timezone() != null) user.setTimezone(request.timezone());
 
         user = userRepository.save(user);
         return new UserProfileResponse(
                 user.getId(), user.getEmail(), user.getPhone(), user.getUsername(),
-                user.getAvatarUrl(), user.getDefaultCurrency(), user.getTimezone(),
+                user.getAvatarUrl(), user.getDefaultCurrency(),
                 user.getCreatedAt());
     }
 
@@ -63,7 +62,7 @@ public class UserService {
 
         return new UserProfileResponse(
                 user.getId(), user.getEmail(), user.getPhone(), user.getUsername(),
-                user.getAvatarUrl(), user.getDefaultCurrency(), user.getTimezone(),
+                user.getAvatarUrl(), user.getDefaultCurrency(),
                 user.getCreatedAt());
     }
 

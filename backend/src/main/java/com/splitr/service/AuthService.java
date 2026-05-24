@@ -110,7 +110,7 @@ public class AuthService {
     private UserProfileResponse toProfile(User user) {
         return new UserProfileResponse(
                 user.getId(), user.getEmail(), user.getPhone(), user.getUsername(),
-                user.getAvatarUrl(), user.getDefaultCurrency(), user.getTimezone(),
+                user.getAvatarUrl(), user.getDefaultCurrency(),
                 user.getCreatedAt());
     }
 }

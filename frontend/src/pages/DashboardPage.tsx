@@ -78,7 +78,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="font-headline text-4xl font-bold text-primary mb-2">
-                {totalOwed.toFixed(2)} PLN
+                {totalOwed.toFixed(2)} {user?.defaultCurrency ?? 'PLN'}
               </div>
               <p className="text-sm text-on-surface-variant">
                 {totalOwed > 0 ? 'across your groups' : 'No one owes you'}
@@ -103,7 +103,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="font-headline text-4xl font-bold text-error mb-2">
-                {totalOwe.toFixed(2)} PLN
+                {totalOwe.toFixed(2)} {user?.defaultCurrency ?? 'PLN'}
               </div>
               <p className="text-sm text-on-surface-variant">
                 {totalOwe > 0 ? 'across your groups' : "You're all settled!"}
@@ -289,6 +289,7 @@ export default function DashboardPage() {
         isOpen={showGroupModal}
         onClose={() => setShowGroupModal(false)}
         onSubmit={handleCreateGroup}
+        defaultCurrency={user?.defaultCurrency}
       />
     </div>
   )

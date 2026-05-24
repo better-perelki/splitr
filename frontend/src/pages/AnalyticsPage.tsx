@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Icon from '../components/Icon'
 import DateRangePicker from '../components/DateRangePicker'
 import { analyticsApi, type GlobalAnalyticsResponse } from '../api/analytics'
+import { useAuth } from '../contexts/AuthContext'
 
 const CATEGORY_EMOJI: Record<string, string> = {
     FOOD: '🍕',
@@ -44,6 +45,7 @@ function getDateRange(preset: RangePreset): { from: string; to: string } {
 }
 
 export default function AnalyticsPage() {
+    const { user } = useAuth()
     const [preset, setPreset] = useState<RangePreset>('3months')
     const [customFrom, setCustomFrom] = useState('')
     const [customTo, setCustomTo] = useState('')
@@ -109,21 +111,21 @@ export default function AnalyticsPage() {
         return [
             {
                 label: 'Total Spent',
-                value: `${data.totalSpent.toFixed(2)} PLN`,
+                value: `${data.totalSpent.toFixed(2)} ${user?.defaultCurrency ?? 'PLN'}`,
                 icon: 'analytics',
                 iconColor: 'text-primary',
                 highlight: true,
             },
             {
                 label: 'You Owe',
-                value: `${data.youOwe.toFixed(2)} PLN`,
+                value: `${data.youOwe.toFixed(2)} ${user?.defaultCurrency ?? 'PLN'}`,
                 icon: 'outbound',
                 iconColor: 'text-error',
                 valueColor: data.youOwe > 0 ? 'text-error' : undefined,
             },
             {
                 label: 'Owed to You',
-                value: `${data.owedToYou.toFixed(2)} PLN`,
+                value: `${data.owedToYou.toFixed(2)} ${user?.defaultCurrency ?? 'PLN'}`,
                 icon: 'account_balance_wallet',
                 iconColor: 'text-primary',
                 valueColor: 'text-primary',
@@ -299,8 +301,8 @@ export default function AnalyticsPage() {
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                                             <span className="text-2xl font-headline font-bold">
                                                 {data.totalSpent >= 1000
-                                                    ? `${(data.totalSpent / 1000).toFixed(1)}k PLN`
-                                                    : `${data.totalSpent.toFixed(0)} PLN`}
+                                                    ? `${(data.totalSpent / 1000).toFixed(1)}k ${user?.defaultCurrency ?? 'PLN'}`
+                                                    : `${data.totalSpent.toFixed(0)} ${user?.defaultCurrency ?? 'PLN'}`}
                                             </span>
                                             <span className="text-[10px] uppercase text-on-surface-variant tracking-widest">
                                                 Total
@@ -362,7 +364,7 @@ export default function AnalyticsPage() {
                                                 className="flex-1 flex flex-col items-center gap-4 group"
                                             >
                                                 <div className="text-[10px] font-bold text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {m.amount.toFixed(0)} PLN
+                                                    {m.amount.toFixed(0)} {user?.defaultCurrency ?? 'PLN'}
                                                 </div>
                                                 <div className="w-full flex-1 flex items-end">
                                                     <div
@@ -459,7 +461,7 @@ export default function AnalyticsPage() {
                                                                 isTop ? 'text-primary' : 'text-on-surface'
                                                             }`}
                                                         >
-                                                            {sp.amount.toFixed(2)} PLN
+                                                            {sp.amount.toFixed(2)} {user?.defaultCurrency ?? 'PLN'}
                                                         </span>
                                                     </div>
                                                     <div className="w-full h-2 bg-surface-container-low rounded-full overflow-hidden">

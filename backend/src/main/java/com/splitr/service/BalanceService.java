@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,16 +22,26 @@ public class BalanceService {
     private final ExpenseRepository expenseRepository;
     private final SettlementRepository settlementRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final ExchangeRateService exchangeRateService;
+    private final com.splitr.repository.UserRepository userRepository;
 
     public BalanceService(ExpenseRepository expenseRepository,
                           SettlementRepository settlementRepository,
-                          GroupMemberRepository groupMemberRepository) {
+                          GroupMemberRepository groupMemberRepository,
+                          ExchangeRateService exchangeRateService,
+                          com.splitr.repository.UserRepository userRepository) {
         this.expenseRepository = expenseRepository;
         this.settlementRepository = settlementRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.exchangeRateService = exchangeRateService;
+        this.userRepository = userRepository;
     }
 
     public WalletSummaryResponse getWalletSummary(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        String defaultCurrency = user.getDefaultCurrency();
+
         BigDecimal totalOwed = BigDecimal.ZERO;
         BigDecimal totalOwe = BigDecimal.ZERO;
         List<WalletDebt> debts = new ArrayList<>();
@@ -51,13 +62,16 @@ public class BalanceService {
                     .orElse(BigDecimal.ZERO);
             groupBalances.add(new GroupBalance(groupId, userBalance));
 
+            BigDecimal rate = exchangeRateService.getRate(currency, defaultCurrency, LocalDate.now());
+
             for (BalanceEntry entry : balance.simplifiedDebts()) {
+                BigDecimal convertedAmount = entry.amount().multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
                 if (entry.from().id().equals(userId)) {
-                    totalOwe = totalOwe.add(entry.amount());
+                    totalOwe = totalOwe.add(convertedAmount);
                     debts.add(new WalletDebt(groupId, groupName, currency,
                             entry.to(), entry.amount(), "owe"));
                 } else if (entry.to().id().equals(userId)) {
-                    totalOwed = totalOwed.add(entry.amount());
+                    totalOwed = totalOwed.add(convertedAmount);
                     debts.add(new WalletDebt(groupId, groupName, currency,
                             entry.from(), entry.amount(), "owed"));
                 }

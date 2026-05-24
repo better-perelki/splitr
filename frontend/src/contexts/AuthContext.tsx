@@ -21,7 +21,6 @@ export interface UserProfile {
   username: string
   avatarUrl: string | null
   defaultCurrency: string
-  timezone: string
   createdAt: string
 }
 

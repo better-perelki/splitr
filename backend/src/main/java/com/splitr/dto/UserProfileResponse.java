@@ -10,6 +10,5 @@ public record UserProfileResponse(
         String username,
         String avatarUrl,
         String defaultCurrency,
-        String timezone,
         Instant createdAt
 ) {}
