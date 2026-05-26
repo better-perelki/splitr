@@ -17,6 +17,9 @@ public interface ExchangeRateRepository extends JpaRepository<ExchangeRate, UUID
     Optional<ExchangeRate> findFirstByCurrencyFromAndCurrencyToAndRateDateLessThanEqualOrderByRateDateDesc(
             String currencyFrom, String currencyTo, LocalDate rateDate);
 
+    Optional<ExchangeRate> findFirstByCurrencyFromAndCurrencyToOrderByRateDateAsc(
+            String currencyFrom, String currencyTo);
+
     boolean existsByRateDate(LocalDate rateDate);
 
     @Query("SELECT DISTINCT e.currencyFrom FROM ExchangeRate e WHERE e.currencyTo = 'PLN' ORDER BY e.currencyFrom")

@@ -194,8 +194,15 @@ public class ExchangeRateService {
         }
 
         // Fallback to latest available rate on or before the date
+        Optional<ExchangeRate> before = exchangeRateRepository
+                .findFirstByCurrencyFromAndCurrencyToAndRateDateLessThanEqualOrderByRateDateDesc(from, to, date);
+        if (before.isPresent()) {
+            return Optional.of(before.get().getRate());
+        }
+
+        // Second fallback: earliest available rate (useful if DB has no historical data before the transaction)
         return exchangeRateRepository
-                .findFirstByCurrencyFromAndCurrencyToAndRateDateLessThanEqualOrderByRateDateDesc(from, to, date)
+                .findFirstByCurrencyFromAndCurrencyToOrderByRateDateAsc(from, to)
                 .map(ExchangeRate::getRate);
     }
 

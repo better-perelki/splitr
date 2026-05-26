@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Icon from './Icon'
 import DateRangePicker from './DateRangePicker'
 import { analyticsApi, type GroupAnalyticsResponse } from '../api/analytics'
+import { useAuth } from '../contexts/AuthContext'
 
 const CATEGORY_EMOJI: Record<string, string> = {
     FOOD: '🍕',
@@ -48,10 +49,11 @@ function getDateRange(preset: RangePreset): { from: string; to: string } {
 
 interface Props {
     groupId: string
-    currency: string
 }
 
-export default function GroupAnalyticsTab({ groupId, currency }: Props) {
+export default function GroupAnalyticsTab({ groupId }: Props) {
+    const { user } = useAuth()
+    const currency = user?.defaultCurrency ?? 'PLN'
     const [preset, setPreset] = useState<RangePreset>('month')
     const [customFrom, setCustomFrom] = useState('')
     const [customTo, setCustomTo] = useState('')

@@ -11,7 +11,6 @@ interface Props {
     onChanged?: (expense: ExpenseResponse | null) => void
     groupId: string
     members: GroupMemberResponse[]
-    currency: string
 }
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -24,7 +23,7 @@ const CATEGORY_ICONS: Record<string, string> = {
     OTHER: 'more_horiz',
 }
 
-export default function ExpenseDetailModal({ expense, onClose, onChanged, groupId, members, currency }: Props) {
+export default function ExpenseDetailModal({ expense, onClose, onChanged, groupId, members }: Props) {
     const { user } = useAuth()
     const [editing, setEditing] = useState(false)
     const [deleting, setDeleting] = useState(false)
@@ -56,7 +55,6 @@ export default function ExpenseDetailModal({ expense, onClose, onChanged, groupI
                 onClose={() => setEditing(false)}
                 groupId={groupId}
                 members={members}
-                currency={currency}
                 expense={expense}
                 onSaved={(saved) => {
                     onChanged?.(saved)
@@ -100,19 +98,15 @@ export default function ExpenseDetailModal({ expense, onClose, onChanged, groupI
                     <div className="flex flex-col gap-1">
                         <div className="flex items-baseline gap-2">
                             <span className="font-headline text-4xl font-bold text-primary">
-                                {expense.currency !== currency && expense.convertedAmount != null
-                                    ? expense.convertedAmount.toFixed(2)
-                                    : expense.amount.toFixed(2)}
+                                {(expense.amount * expense.exchangeRateToUserCurrency).toFixed(2)}
                             </span>
                             <span className="text-sm text-on-surface-variant font-bold">
-                                {expense.currency !== currency && expense.convertedAmount != null
-                                    ? currency
-                                    : expense.currency}
+                                {expense.userCurrency}
                             </span>
                         </div>
-                        {expense.currency !== currency && expense.convertedAmount != null && (
+                        {expense.currency !== expense.userCurrency && (
                             <div className="text-sm font-medium text-on-surface-variant opacity-70">
-                                Original: {expense.amount.toFixed(2)} {expense.currency} (Rate: {expense.exchangeRate})
+                                Original: {expense.amount.toFixed(2)} {expense.currency} (Rate: {expense.exchangeRateToUserCurrency})
                             </div>
                         )}
                     </div>

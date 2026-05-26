@@ -18,7 +18,6 @@ interface Props {
     onClose: () => void
     groupId: string
     members: GroupMemberResponse[]
-    currency: string
     expense?: ExpenseResponse | null
     onSaved?: (expense: ExpenseResponse) => void
 }
@@ -79,10 +78,13 @@ export default function AddExpenseDrawer({
                                              onClose,
                                              groupId,
                                              members,
-                                             currency,
                                              expense,
                                              onSaved,
                                          }: Props) {
+    const { user } = useAuth()
+    const currentUserId = user?.id ?? ''
+    const currency = user?.defaultCurrency ?? 'PLN'
+
     const [amount, setAmount] = useState('')
     const [description, setDescription] = useState('')
     const [expenseDate, setExpenseDate] = useState(todayIso())
@@ -101,9 +103,6 @@ export default function AddExpenseDrawer({
     const [isConverting, setIsConverting] = useState(false)
 
     const fileInputRef = useRef<HTMLInputElement>(null)
-
-    const { user } = useAuth()
-    const currentUserId = user?.id ?? ''
 
     const isEdit = Boolean(expense)
     const totalNumber = parseNum(amount)

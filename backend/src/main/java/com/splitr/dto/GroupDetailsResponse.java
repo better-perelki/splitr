@@ -9,7 +9,6 @@ public record GroupDetailsResponse(
     UUID id,
     String name,
     String icon,
-    String currency,
     GroupType type,
     BigDecimal balance,
     List<GroupMemberResponse> members

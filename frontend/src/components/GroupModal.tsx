@@ -9,7 +9,6 @@ const GROUP_TYPES: { value: GroupType; label: string; icon: string }[] = [
   { value: 'OTHER', label: 'Other', icon: 'category' },
 ]
 
-const CURRENCIES = ['PLN', 'USD', 'EUR', 'GBP', 'CZK', 'NOK', 'SEK', 'CHF']
 
 const ICON_EMOJIS = ['🏔️', '🏠', '🎉', '✈️', '🍕', '🎮', '🏖️', '💼', '🎓', '🛒', '🚗', '🎵', '⚽', '🏥', '🐾', '📸']
 
@@ -18,21 +17,16 @@ interface GroupModalProps {
   onClose: () => void
   onSubmit: (data: GroupCreateRequest | GroupUpdateRequest) => Promise<void>
   editGroup?: GroupResponse | null
-  defaultCurrency?: string
 }
 
-export default function GroupModal({ isOpen, onClose, onSubmit, editGroup, defaultCurrency }: GroupModalProps) {
+export default function GroupModal({ isOpen, onClose, onSubmit, editGroup }: GroupModalProps) {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('🏔️')
-  const [currency, setCurrency] = useState(defaultCurrency ?? 'PLN')
   const [type, setType] = useState<GroupType>('TRIP')
   const [submitting, setSubmitting] = useState(false)
 
   const [showIconPicker, setShowIconPicker] = useState(false)
-  const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
-
   const backdropRef = useRef<HTMLDivElement>(null)
-  const currencyDropdownRef = useRef<HTMLDivElement>(null)
   const iconDropdownRef = useRef<HTMLDivElement>(null)
 
   // Inicjalizacja danych po otwarciu
@@ -40,35 +34,30 @@ export default function GroupModal({ isOpen, onClose, onSubmit, editGroup, defau
     if (editGroup) {
       setName(editGroup.name)
       setIcon(editGroup.icon ?? '🏔️')
-      setCurrency(editGroup.currency)
       setType(editGroup.type)
     } else {
       setName('')
       setIcon('🏔️')
-      setCurrency(defaultCurrency ?? 'PLN')
       setType('TRIP')
     }
-  }, [editGroup, isOpen, defaultCurrency])
+  }, [editGroup, isOpen])
 
   // Obsługa zamykania dropdownów po kliknięciu poza nimi
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (currencyDropdownRef.current && !currencyDropdownRef.current.contains(event.target as Node)) {
-        setShowCurrencyPicker(false)
-      }
       if (iconDropdownRef.current && !iconDropdownRef.current.contains(event.target as Node)) {
         setShowIconPicker(false)
       }
     }
 
-    if (showCurrencyPicker || showIconPicker) {
+    if (showIconPicker) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showCurrencyPicker, showIconPicker])
+  }, [showIconPicker])
 
   if (!isOpen) return null
 
@@ -76,7 +65,7 @@ export default function GroupModal({ isOpen, onClose, onSubmit, editGroup, defau
     e.preventDefault()
     setSubmitting(true)
     try {
-      await onSubmit({ name, icon, currency, type })
+      await onSubmit({ name, icon, type })
       onClose()
     } finally {
       setSubmitting(false)
@@ -93,7 +82,6 @@ export default function GroupModal({ isOpen, onClose, onSubmit, editGroup, defau
           onClick={handleBackdropClick}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
       >
-        {/* Usunięto overflow-hidden, aby dropdown waluty mógł naturalnie wychodzić za krawędź modala */}
         <div className="relative w-full max-w-lg mx-4 bg-surface-container rounded-3xl border border-outline-variant/20 shadow-2xl animate-slideUp">
 
           {/* Dekoracyjne światła z osobnym overflow-hidden, żeby nie wychodziły poza obrys, ale nie ucinały listy walut */}
@@ -179,39 +167,6 @@ export default function GroupModal({ isOpen, onClose, onSubmit, editGroup, defau
                       <span className="text-[10px] font-bold uppercase tracking-wider">{t.label}</span>
                     </button>
                 ))}
-              </div>
-            </div>
-
-            {/* Currency */}
-            <div>
-              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1 block">
-                Currency
-              </label>
-              <div className="relative" ref={currencyDropdownRef}>
-                <button
-                    type="button"
-                    onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
-                    className="w-full bg-surface-container-highest/60 border border-outline-variant/20 rounded-xl px-4 py-3 text-left text-on-surface font-medium flex items-center justify-between hover:border-outline-variant/40 transition-all"
-                >
-                  <span>{currency}</span>
-                  <Icon name="expand_more" className={`text-on-surface-variant transition-transform ${showCurrencyPicker ? 'rotate-180' : ''}`} />
-                </button>
-                {showCurrencyPicker && (
-                    <div className="absolute top-full mt-2 left-0 right-0 z-[60] bg-surface-container-highest rounded-xl border border-outline-variant/20 shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                      {CURRENCIES.map(c => (
-                          <button
-                              key={c}
-                              type="button"
-                              onClick={() => { setCurrency(c); setShowCurrencyPicker(false) }}
-                              className={`w-full px-4 py-2.5 text-left hover:bg-primary/10 transition-colors text-sm font-medium ${
-                                  currency === c ? 'text-primary bg-primary/5' : 'text-on-surface'
-                              }`}
-                          >
-                            {c}
-                          </button>
-                      ))}
-                    </div>
-                )}
               </div>
             </div>
 

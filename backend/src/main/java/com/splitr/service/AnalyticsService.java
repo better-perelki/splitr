@@ -57,9 +57,6 @@ public class AnalyticsService {
         List<Expense> allExpenses = new ArrayList<>();
         for (GroupMember gm : memberships) {
             UUID groupId = gm.getGroup().getId();
-            String currency = gm.getGroup().getCurrency();
-            groupRates.put(groupId, exchangeRateService.getRate(currency, defaultCurrency, LocalDate.now()));
-
             allExpenses.addAll(
                     expenseRepository.findByGroupIdAndExpenseDateBetween(groupId, from, to)
             );
@@ -67,8 +64,8 @@ public class AnalyticsService {
 
         BigDecimal totalSpent = allExpenses.stream()
                 .map(e -> {
-                    BigDecimal amt = e.getConvertedAmount() != null ? e.getConvertedAmount() : e.getAmount();
-                    return amt.multiply(groupRates.getOrDefault(e.getGroup().getId(), BigDecimal.ONE));
+                    BigDecimal rate = exchangeRateService.getRate(e.getCurrency(), defaultCurrency, e.getExpenseDate());
+                    return e.getAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -77,9 +74,8 @@ public class AnalyticsService {
         BigDecimal owedToYou = BigDecimal.ZERO;
         for (GroupMember gm : memberships) {
             UUID groupId = gm.getGroup().getId();
-            BigDecimal rate = groupRates.getOrDefault(groupId, BigDecimal.ONE);
-            Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
-            BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO).multiply(rate);
+            Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId, defaultCurrency);
+            BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
             if (userBalance.signum() < 0) {
                 youOwe = youOwe.add(userBalance.negate());
             } else {
@@ -95,9 +91,9 @@ public class AnalyticsService {
                     .count();
         }
 
-        List<CategoryStat> categoryBreakdown = buildCategoryBreakdown(allExpenses, totalSpent, groupRates);
-        List<MonthStat> monthlyTrend = buildMonthlyTrend(allExpenses, from, to, groupRates);
-        List<MemberSpending> memberRanking = buildMemberRanking(allExpenses, totalSpent, groupRates);
+        List<CategoryStat> categoryBreakdown = buildCategoryBreakdown(allExpenses, totalSpent, defaultCurrency);
+        List<MonthStat> monthlyTrend = buildMonthlyTrend(allExpenses, from, to, defaultCurrency);
+        List<MemberSpending> memberRanking = buildMemberRanking(allExpenses, totalSpent, defaultCurrency);
 
         return new GlobalAnalyticsResponse(
                 totalSpent, youOwe, owedToYou, settlementsCount,
@@ -110,27 +106,30 @@ public class AnalyticsService {
         groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
                 .orElseThrow(() -> new UnauthorizedException("You are not a member of this group"));
 
+        User user = userRepository.findById(userId).orElseThrow();
+        String defaultCurrency = user.getDefaultCurrency();
+
         List<Expense> expenses = expenseRepository.findByGroupIdAndExpenseDateBetween(groupId, from, to);
 
         BigDecimal totalSpent = expenses.stream()
-                .map(e -> e.getConvertedAmount() != null ? e.getConvertedAmount() : e.getAmount())
+                .map(e -> {
+                    BigDecimal rate = exchangeRateService.getRate(e.getCurrency(), defaultCurrency, e.getExpenseDate());
+                    return e.getAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        List<CategoryStat> categoryBreakdown = buildCategoryBreakdown(expenses, totalSpent, null);
-        List<MonthStat> monthlyTrend = buildMonthlyTrend(expenses, from, to, null);
-        List<MemberSpending> memberRanking = buildMemberRanking(expenses, totalSpent, null);
+        List<CategoryStat> categoryBreakdown = buildCategoryBreakdown(expenses, totalSpent, defaultCurrency);
+        List<MonthStat> monthlyTrend = buildMonthlyTrend(expenses, from, to, defaultCurrency);
+        List<MemberSpending> memberRanking = buildMemberRanking(expenses, totalSpent, defaultCurrency);
 
         return new GroupAnalyticsResponse(totalSpent, categoryBreakdown, monthlyTrend, memberRanking);
     }
 
-    private List<CategoryStat> buildCategoryBreakdown(List<Expense> expenses, BigDecimal totalSpent, Map<UUID, BigDecimal> groupRates) {
+    private List<CategoryStat> buildCategoryBreakdown(List<Expense> expenses, BigDecimal totalSpent, String targetCurrency) {
         Map<ExpenseCategory, BigDecimal> byCategory = new EnumMap<>(ExpenseCategory.class);
         for (Expense expense : expenses) {
-            BigDecimal amt = expense.getConvertedAmount() != null ? expense.getConvertedAmount() : expense.getAmount();
-            if (groupRates != null) {
-                BigDecimal rate = groupRates.getOrDefault(expense.getGroup().getId(), BigDecimal.ONE);
-                amt = amt.multiply(rate).setScale(2, RoundingMode.HALF_UP);
-            }
+            BigDecimal rate = exchangeRateService.getRate(expense.getCurrency(), targetCurrency, expense.getExpenseDate());
+            BigDecimal amt = expense.getAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
             byCategory.merge(expense.getCategory(), amt, BigDecimal::add);
         }
 
@@ -148,7 +147,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    private List<MonthStat> buildMonthlyTrend(List<Expense> expenses, LocalDate from, LocalDate to, Map<UUID, BigDecimal> groupRates) {
+    private List<MonthStat> buildMonthlyTrend(List<Expense> expenses, LocalDate from, LocalDate to, String targetCurrency) {
         // Pre-populate all months in range so the frontend gets zero-value entries too
         Map<YearMonth, BigDecimal> byMonth = new LinkedHashMap<>();
         YearMonth start = YearMonth.from(from);
@@ -159,11 +158,8 @@ public class AnalyticsService {
 
         for (Expense expense : expenses) {
             YearMonth ym = YearMonth.from(expense.getExpenseDate());
-            BigDecimal amt = expense.getConvertedAmount() != null ? expense.getConvertedAmount() : expense.getAmount();
-            if (groupRates != null) {
-                BigDecimal rate = groupRates.getOrDefault(expense.getGroup().getId(), BigDecimal.ONE);
-                amt = amt.multiply(rate).setScale(2, RoundingMode.HALF_UP);
-            }
+            BigDecimal rate = exchangeRateService.getRate(expense.getCurrency(), targetCurrency, expense.getExpenseDate());
+            BigDecimal amt = expense.getAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
             byMonth.merge(ym, amt, BigDecimal::add);
         }
 
@@ -172,18 +168,16 @@ public class AnalyticsService {
                 .toList();
     }
 
-    private List<MemberSpending> buildMemberRanking(List<Expense> expenses, BigDecimal totalSpent, Map<UUID, BigDecimal> groupRates) {
+    private List<MemberSpending> buildMemberRanking(List<Expense> expenses, BigDecimal totalSpent, String targetCurrency) {
         Map<UUID, BigDecimal> byPayer = new LinkedHashMap<>();
         Map<UUID, User> payerUsers = new HashMap<>();
 
         for (Expense expense : expenses) {
-            BigDecimal expenseRate = expense.getExchangeRate() != null ? expense.getExchangeRate() : BigDecimal.ONE;
-            BigDecimal groupRate = groupRates != null ? groupRates.getOrDefault(expense.getGroup().getId(), BigDecimal.ONE) : BigDecimal.ONE;
-            BigDecimal finalRate = expenseRate.multiply(groupRate);
+            BigDecimal rate = exchangeRateService.getRate(expense.getCurrency(), targetCurrency, expense.getExpenseDate());
 
             for (ExpensePayer payer : expense.getPayers()) {
                 UUID uid = payer.getUser().getId();
-                BigDecimal converted = payer.getAmount().multiply(finalRate).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal converted = payer.getAmount().multiply(rate).setScale(2, RoundingMode.HALF_UP);
                 byPayer.merge(uid, converted, BigDecimal::add);
                 payerUsers.putIfAbsent(uid, payer.getUser());
             }

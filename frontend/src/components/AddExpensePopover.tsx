@@ -110,9 +110,7 @@ export default function AddExpensePopover() {
                     <p className="text-sm font-medium text-slate-100 truncate">{g.name}</p>
                     <p className="text-[11px] text-slate-500 capitalize">{g.type.toLowerCase()}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 bg-slate-800/60 px-2 py-1 rounded-md">
-                    {g.currency}
-                  </span>
+
                 </button>
               ))
             )}

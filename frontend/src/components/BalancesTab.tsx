@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Icon from './Icon'
 import SettleModal from './SettleModal'
+import { useAuth } from '../contexts/AuthContext'
 import {
     balancesApi,
     settlementsApi,
@@ -12,7 +13,6 @@ import {
 interface BalancesTabProps {
     groupId: string
     currentUserId: string
-    currency: string
     onSettled?: () => void
 }
 
@@ -28,7 +28,9 @@ function formatDate(iso: string) {
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export default function BalancesTab({ groupId, currentUserId, currency, onSettled }: BalancesTabProps) {
+export default function BalancesTab({ groupId, currentUserId, onSettled }: BalancesTabProps) {
+    const { user } = useAuth()
+    const currency = user?.defaultCurrency ?? 'PLN'
     const [balances, setBalances] = useState<GroupBalanceResponse | null>(null)
     const [settlements, setSettlements] = useState<SettlementResponse[]>([])
     const [loading, setLoading] = useState(true)

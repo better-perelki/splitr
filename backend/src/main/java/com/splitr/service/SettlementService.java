@@ -62,7 +62,7 @@ public class SettlementService {
         settlement.setPayer(payer);
         settlement.setPayee(payee);
         settlement.setAmount(request.amount());
-        settlement.setCurrency(request.currency() != null ? request.currency() : group.getCurrency());
+        settlement.setCurrency(request.currency() != null ? request.currency() : payer.getDefaultCurrency());
         settlement.setMethod(request.method());
         settlement.setNotes(request.notes());
 

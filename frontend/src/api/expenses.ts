@@ -39,9 +39,8 @@ export interface ExpenseResponse {
     description: string
     amount: number
     currency: string
-    convertedAmount?: number | null
-    exchangeRate?: number | null
-    groupCurrency?: string | null
+    userCurrency: string
+    exchangeRateToUserCurrency: number
     category: ExpenseCategory
     expenseDate: string
     splitType: SplitType

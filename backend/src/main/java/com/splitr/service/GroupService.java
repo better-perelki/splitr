@@ -52,7 +52,6 @@ public class GroupService {
         Group group = new Group();
         group.setName(request.name());
         group.setIcon(request.icon());
-        group.setCurrency(request.currency());
         group.setType(request.type());
 
         group = groupRepository.save(group);
@@ -72,7 +71,8 @@ public class GroupService {
         return groupMemberRepository.findByUserId(userId).stream()
                 .map(gm -> {
                     Group group = gm.getGroup();
-                    Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(group.getId());
+                    User targetUser = userRepository.findById(userId).orElseThrow();
+                    Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(group.getId(), targetUser.getDefaultCurrency());
                     BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
                     return mapToResponse(group, userBalance);
                 })
@@ -83,7 +83,8 @@ public class GroupService {
     public GroupDetailsResponse getGroupDetails(UUID userId, UUID groupId) {
         Group group = getGroupIfAuthorized(userId, groupId);
 
-        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        User targetUser = userRepository.findById(userId).orElseThrow();
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId, targetUser.getDefaultCurrency());
         BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
 
         List<GroupMemberResponse> memberResponses = groupMemberRepository.findByGroupId(groupId).stream()
@@ -98,7 +99,6 @@ public class GroupService {
                 group.getId(),
                 group.getName(),
                 group.getIcon(),
-                group.getCurrency(),
                 group.getType(),
                 userBalance,
                 memberResponses
@@ -110,12 +110,12 @@ public class GroupService {
 
         group.setName(request.name());
         group.setIcon(request.icon());
-        group.setCurrency(request.currency());
         group.setType(request.type());
 
         group = groupRepository.save(group);
 
-        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        User targetUser = userRepository.findById(userId).orElseThrow();
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId, targetUser.getDefaultCurrency());
         BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
         return mapToResponse(group, userBalance);
     }
@@ -246,7 +246,6 @@ public class GroupService {
                 group.getId(),
                 group.getName(),
                 group.getIcon(),
-                group.getCurrency(),
                 group.getType(),
                 userBalance
         );
@@ -263,13 +262,15 @@ public class GroupService {
     }
 
     private boolean hasUserOutstandingBalances(UUID groupId, UUID userId) {
-        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        User targetUser = userRepository.findById(userId).orElseThrow();
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId, targetUser.getDefaultCurrency());
         BigDecimal userBalance = netBalances.getOrDefault(userId, BigDecimal.ZERO);
         return userBalance.abs().compareTo(new BigDecimal("0.01")) >= 0;
     }
 
     private boolean hasGroupOutstandingBalances(UUID groupId) {
-        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId);
+        // use an arbitrary currency (PLN) to check for non-zero balances, since absolute zero is zero in any currency.
+        Map<UUID, BigDecimal> netBalances = balanceService.computeNetBalances(groupId, "PLN");
         return netBalances.values().stream()
                 .anyMatch(balance -> balance.abs().compareTo(new BigDecimal("0.01")) >= 0);
     }

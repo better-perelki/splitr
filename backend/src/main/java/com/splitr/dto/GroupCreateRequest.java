@@ -7,6 +7,5 @@ import jakarta.validation.constraints.NotNull;
 public record GroupCreateRequest(
     @NotBlank String name,
     String icon,
-    @NotBlank String currency,
     @NotNull GroupType type
 ) {}

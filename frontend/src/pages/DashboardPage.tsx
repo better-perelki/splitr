@@ -33,7 +33,6 @@ export default function DashboardPage() {
         id: crypto.randomUUID(),
         name: data.name,
         icon: data.icon ?? null,
-        currency: data.currency,
         type: data.type,
         balance: 0,
       }])
@@ -230,9 +229,6 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
-                        {group.currency}
-                      </span>
                     </div>
                     <div className="flex justify-between items-end">
                       <div>
@@ -248,7 +244,7 @@ export default function DashboardPage() {
                                 : 'text-on-surface'
                           }`}
                         >
-                          {bal > 0.01 ? '+' : ''}{bal.toFixed(2)} {group.currency}
+                          {bal > 0.01 ? '+' : ''}{bal.toFixed(2)} {user?.defaultCurrency ?? 'PLN'}
                         </p>
                       </div>
                       <div
@@ -289,7 +285,6 @@ export default function DashboardPage() {
         isOpen={showGroupModal}
         onClose={() => setShowGroupModal(false)}
         onSubmit={handleCreateGroup}
-        defaultCurrency={user?.defaultCurrency}
       />
     </div>
   )
