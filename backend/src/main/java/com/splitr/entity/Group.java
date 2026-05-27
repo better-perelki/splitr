@@ -20,6 +20,9 @@ public class Group {
     @Column
     private String icon;
 
+    @Column(nullable = false, length = 3)
+    private String currency;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 50)
     private GroupType type;
@@ -53,6 +56,9 @@ public class Group {
 
     public String getIcon() { return icon; }
     public void setIcon(String icon) { this.icon = icon; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
 
     public GroupType getType() { return type; }
     public void setType(GroupType type) { this.type = type; }

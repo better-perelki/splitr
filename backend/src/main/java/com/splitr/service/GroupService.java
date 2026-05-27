@@ -52,6 +52,7 @@ public class GroupService {
         Group group = new Group();
         group.setName(request.name());
         group.setIcon(request.icon());
+        group.setCurrency(creator.getDefaultCurrency());
         group.setType(request.type());
 
         group = groupRepository.save(group);
