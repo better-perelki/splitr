@@ -1,8 +1,5 @@
 # Splitr
 
-
----
-
 ## Dokumentacja użytkowa
 
 Splitr pozwala śledzić i rozliczać wspólne wydatki w grupach (np. wakacje, współlokatorzy, wyjścia ze znajomymi).
@@ -28,8 +25,6 @@ Splitr pozwala śledzić i rozliczać wspólne wydatki w grupach (np. wakacje, w
 5. W zakładce **Balances** zobaczysz aktualne salda i sugerowane przelewy do rozliczenia grupy.
 
 Dokumentacja API (Swagger UI): `http://localhost:8080/swagger-ui.html`.
-
----
 
 ## Dokumentacja instalacyjno-konfiguracyjna
 
