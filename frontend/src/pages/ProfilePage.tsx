@@ -3,17 +3,9 @@ import { useAuth, type UserProfile } from '../contexts/AuthContext'
 import api from '../api/client'
 import Icon from '../components/Icon'
 import axios from 'axios'
+import { exchangeRatesApi } from '../api/exchangeRates'
 
-const currencies = [
-  { value: 'USD', label: 'USD - US Dollar ($)' },
-  { value: 'EUR', label: 'EUR - Euro (\u20ac)' },
-  { value: 'GBP', label: 'GBP - British Pound (\u00a3)' },
-  { value: 'PLN', label: 'PLN - Polish Zloty (z\u0142)' },
-  { value: 'CZK', label: 'CZK - Czech Koruna (K\u010d)' },
-  { value: 'NOK', label: 'NOK - Norwegian Krone (kr)' },
-  { value: 'SEK', label: 'SEK - Swedish Krona (kr)' },
-  { value: 'CHF', label: 'CHF - Swiss Franc (CHF)' },
-]
+
 
 
 
@@ -29,6 +21,25 @@ export default function ProfilePage() {
   })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [supportedCurrencies, setSupportedCurrencies] = useState<{value: string, label: string}[]>([])
+
+  useEffect(() => {
+    exchangeRatesApi.supportedCurrencies()
+      .then(res => {
+        const displayNames = new Intl.DisplayNames(['en'], { type: 'currency' })
+        const currs = res.currencies.map(c => {
+          let label = c
+          try {
+            label = `${c} - ${displayNames.of(c)}`
+          } catch {
+            // Fallback to acronym if lookup fails
+          }
+          return { value: c, label }
+        })
+        setSupportedCurrencies(currs)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!message) return
@@ -223,7 +234,7 @@ export default function ProfilePage() {
                   onChange={(e) => setForm((f) => ({ ...f, defaultCurrency: e.target.value }))}
                   className="w-full bg-surface-container-low border-none rounded-xl px-5 py-4 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-high transition-all font-body text-on-surface appearance-none"
                 >
-                  {currencies.map((c) => (
+                  {supportedCurrencies.map((c) => (
                     <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
