@@ -6,6 +6,5 @@ export type UpdateProfileRequest = {
     username?: string;
     phone?: string;
     defaultCurrency?: string;
-    timezone?: string;
 };
 

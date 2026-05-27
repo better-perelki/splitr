@@ -9,7 +9,6 @@ export type UserProfileResponse = {
     username?: string;
     avatarUrl?: string;
     defaultCurrency?: string;
-    timezone?: string;
     createdAt?: string;
 };
 

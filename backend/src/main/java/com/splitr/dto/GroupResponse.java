@@ -8,7 +8,6 @@ public record GroupResponse(
     UUID id,
     String name,
     String icon,
-    String currency,
     GroupType type,
     BigDecimal balance // Mocked for now
 ) {}

@@ -8,7 +8,6 @@ export interface GroupResponse {
   id: string
   name: string
   icon: string | null
-  currency: string
   type: GroupType
   balance: number
 }
@@ -32,14 +31,12 @@ export interface GroupDetailsResponse extends GroupResponse {
 export interface GroupCreateRequest {
   name: string
   icon?: string
-  currency: string
   type: GroupType
 }
 
 export interface GroupUpdateRequest {
   name: string
   icon?: string
-  currency: string
   type: GroupType
 }
 

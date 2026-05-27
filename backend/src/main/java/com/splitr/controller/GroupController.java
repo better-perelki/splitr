@@ -103,7 +103,7 @@ public class GroupController {
 
     @GetMapping("/{id}/balances")
     public GroupBalanceResponse getBalances(Authentication auth, @PathVariable("id") UUID groupId) {
-        return balanceService.calculateBalances(groupId);
+        return balanceService.calculateBalances(groupId, userId(auth));
     }
 
     @PostMapping("/{id}/settlements")

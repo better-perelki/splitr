@@ -36,19 +36,22 @@ public class ExpenseService {
     private final SplitStrategyFactory splitStrategyFactory;
     private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher events;
+    private final ExchangeRateService exchangeRateService;
 
     public ExpenseService(ExpenseRepository expenseRepository,
                           GroupMemberRepository groupMemberRepository,
                           UserRepository userRepository,
                           SplitStrategyFactory splitStrategyFactory,
                           FileStorageService fileStorageService,
-                          ApplicationEventPublisher events) {
+                          ApplicationEventPublisher events,
+                          ExchangeRateService exchangeRateService) {
         this.expenseRepository = expenseRepository;
         this.groupMemberRepository = groupMemberRepository;
         this.userRepository = userRepository;
         this.splitStrategyFactory = splitStrategyFactory;
         this.fileStorageService = fileStorageService;
         this.events = events;
+        this.exchangeRateService = exchangeRateService;
     }
 
     public ExpenseResponse createExpense(UUID userId, UUID groupId, ExpenseCreateRequest request) {
@@ -68,7 +71,8 @@ public class ExpenseService {
         expense.setCreatedBy(creator);
         expense.setDescription(request.description());
         expense.setAmount(request.amount());
-        expense.setCurrency(request.currency() != null ? request.currency() : group.getCurrency());
+        String expenseCurrency = request.currency() != null ? request.currency() : creator.getDefaultCurrency();
+        expense.setCurrency(expenseCurrency);
         expense.setCategory(request.category());
         expense.setExpenseDate(request.expenseDate());
         expense.setSplitType(request.splitType());
@@ -91,7 +95,7 @@ public class ExpenseService {
                         memberId, userId, groupIdRef, actorUsername, description, amount, currency
                 )));
 
-        return mapToResponse(expense);
+        return mapToResponse(expense, creator.getDefaultCurrency());
     }
 
     @Transactional(readOnly = true)
@@ -99,8 +103,9 @@ public class ExpenseService {
         getGroupIfMember(groupId, userId);
         Page<Expense> page = expenseRepository
                 .findByGroupIdOrderByExpenseDateDescCreatedAtDesc(groupId, pageable);
+        User user = userRepository.findById(userId).orElseThrow();
         return new PagedExpenseResponse(
-                page.map(this::mapToResponse).getContent(),
+                page.map(e -> mapToResponse(e, user.getDefaultCurrency())).getContent(),
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements()
@@ -112,7 +117,8 @@ public class ExpenseService {
         Expense expense = expenseRepository.findById(expenseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Expense not found"));
         getGroupIfMember(expense.getGroup().getId(), userId);
-        return mapToResponse(expense);
+        User user = userRepository.findById(userId).orElseThrow();
+        return mapToResponse(expense, user.getDefaultCurrency());
     }
 
     public ExpenseResponse updateExpense(UUID userId, UUID expenseId, ExpenseUpdateRequest request) {
@@ -130,11 +136,14 @@ public class ExpenseService {
 
         expense.setDescription(request.description());
         expense.setAmount(request.amount());
-        expense.setCurrency(request.currency() != null ? request.currency() : expense.getCurrency());
+        String updatedCurrency = request.currency() != null ? request.currency() : expense.getCurrency();
+        expense.setCurrency(updatedCurrency);
         expense.setCategory(request.category());
         expense.setExpenseDate(request.expenseDate());
         expense.setSplitType(request.splitType());
         expense.setNotes(request.notes());
+
+        User updater = userRepository.findById(userId).orElseThrow();
 
         expense.getPayers().clear();
         expense.getSplits().clear();
@@ -142,7 +151,7 @@ public class ExpenseService {
         attachSplits(expense, calculated);
 
         expense = expenseRepository.save(expense);
-        return mapToResponse(expense);
+        return mapToResponse(expense, updater.getDefaultCurrency());
     }
 
     public void deleteExpense(UUID userId, UUID expenseId) {
@@ -158,9 +167,10 @@ public class ExpenseService {
         ensureCanEdit(expense, userId);
 
         String url = fileStorageService.store(file, "receipts/" + expense.getId());
+        User user = userRepository.findById(userId).orElseThrow();
         expense.setReceiptUrl(url);
         expense = expenseRepository.save(expense);
-        return mapToResponse(expense);
+        return mapToResponse(expense, user.getDefaultCurrency());
     }
 
     private Group getGroupIfMember(UUID groupId, UUID userId) {
@@ -256,7 +266,10 @@ public class ExpenseService {
         return map;
     }
 
-    private ExpenseResponse mapToResponse(Expense expense) {
+    private ExpenseResponse mapToResponse(Expense expense, String userCurrency) {
+        BigDecimal exchangeRateToUserCurrency = exchangeRateService.getRate(
+                expense.getCurrency(), userCurrency, expense.getExpenseDate());
+
         List<ExpensePayerResponse> payers = expense.getPayers().stream()
                 .map(p -> new ExpensePayerResponse(toUserSummary(p.getUser()), p.getAmount()))
                 .toList();
@@ -274,6 +287,8 @@ public class ExpenseService {
                 expense.getDescription(),
                 expense.getAmount(),
                 expense.getCurrency(),
+                userCurrency,
+                exchangeRateToUserCurrency,
                 expense.getCategory(),
                 expense.getExpenseDate(),
                 expense.getSplitType(),

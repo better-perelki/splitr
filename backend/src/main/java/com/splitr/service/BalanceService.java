@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,16 +22,26 @@ public class BalanceService {
     private final ExpenseRepository expenseRepository;
     private final SettlementRepository settlementRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final ExchangeRateService exchangeRateService;
+    private final com.splitr.repository.UserRepository userRepository;
 
     public BalanceService(ExpenseRepository expenseRepository,
                           SettlementRepository settlementRepository,
-                          GroupMemberRepository groupMemberRepository) {
+                          GroupMemberRepository groupMemberRepository,
+                          ExchangeRateService exchangeRateService,
+                          com.splitr.repository.UserRepository userRepository) {
         this.expenseRepository = expenseRepository;
         this.settlementRepository = settlementRepository;
         this.groupMemberRepository = groupMemberRepository;
+        this.exchangeRateService = exchangeRateService;
+        this.userRepository = userRepository;
     }
 
     public WalletSummaryResponse getWalletSummary(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        String defaultCurrency = user.getDefaultCurrency();
+
         BigDecimal totalOwed = BigDecimal.ZERO;
         BigDecimal totalOwe = BigDecimal.ZERO;
         List<WalletDebt> debts = new ArrayList<>();
@@ -39,10 +50,9 @@ public class BalanceService {
         for (GroupMember membership : groupMemberRepository.findByUserId(userId)) {
             Group group = membership.getGroup();
             UUID groupId = group.getId();
-            String currency = group.getCurrency();
             String groupName = group.getName();
 
-            GroupBalanceResponse balance = calculateBalances(groupId);
+            GroupBalanceResponse balance = calculateBalances(groupId, userId);
 
             BigDecimal userBalance = balance.memberBalances().stream()
                     .filter(mb -> mb.user().id().equals(userId))
@@ -54,11 +64,11 @@ public class BalanceService {
             for (BalanceEntry entry : balance.simplifiedDebts()) {
                 if (entry.from().id().equals(userId)) {
                     totalOwe = totalOwe.add(entry.amount());
-                    debts.add(new WalletDebt(groupId, groupName, currency,
+                    debts.add(new WalletDebt(groupId, groupName, defaultCurrency,
                             entry.to(), entry.amount(), "owe"));
                 } else if (entry.to().id().equals(userId)) {
                     totalOwed = totalOwed.add(entry.amount());
-                    debts.add(new WalletDebt(groupId, groupName, currency,
+                    debts.add(new WalletDebt(groupId, groupName, defaultCurrency,
                             entry.from(), entry.amount(), "owed"));
                 }
             }
@@ -69,11 +79,14 @@ public class BalanceService {
         return new WalletSummaryResponse(totalOwed, totalOwe, debts, groupBalances);
     }
 
-    public GroupBalanceResponse calculateBalances(UUID groupId) {
+    public GroupBalanceResponse calculateBalances(UUID groupId, UUID userId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        String targetCurrency = user.getDefaultCurrency();
+
         Map<UUID, User> memberUsers = groupMemberRepository.findByGroupId(groupId).stream()
                 .collect(Collectors.toMap(m -> m.getUser().getId(), GroupMember::getUser));
 
-        Map<UUID, BigDecimal> netBalances = computeNetBalances(groupId);
+        Map<UUID, BigDecimal> netBalances = computeNetBalances(groupId, targetCurrency);
 
         List<MemberBalance> memberBalances = memberUsers.entrySet().stream()
                 .map(entry -> new MemberBalance(
@@ -88,28 +101,35 @@ public class BalanceService {
         return new GroupBalanceResponse(groupId, memberBalances, simplifiedDebts);
     }
 
-    Map<UUID, BigDecimal> computeNetBalances(UUID groupId) {
+    public Map<UUID, BigDecimal> computeNetBalances(UUID groupId, String targetCurrency) {
         Map<UUID, BigDecimal> balances = new HashMap<>();
 
         List<Expense> expenses = expenseRepository.findByGroupId(groupId);
         for (Expense expense : expenses) {
+            BigDecimal rate = exchangeRateService.getRate(expense.getCurrency(), targetCurrency, expense.getExpenseDate());
+
             for (ExpensePayer payer : expense.getPayers()) {
                 UUID userId = payer.getUser().getId();
-                balances.merge(userId, payer.getAmount(), BigDecimal::add);
+                BigDecimal converted = payer.getAmount().multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
+                balances.merge(userId, converted, BigDecimal::add);
             }
 
             for (ExpenseSplit split : expense.getSplits()) {
                 UUID userId = split.getUser().getId();
-                balances.merge(userId, split.getAmount().negate(), BigDecimal::add);
+                BigDecimal converted = split.getAmount().multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
+                balances.merge(userId, converted.negate(), BigDecimal::add);
             }
         }
 
         List<Settlement> settlements = settlementRepository.findByGroupId(groupId);
         for (Settlement settlement : settlements) {
+            LocalDate settlementDate = java.time.LocalDate.ofInstant(settlement.getSettledAt(), java.time.ZoneId.systemDefault());
+            BigDecimal rate = exchangeRateService.getRate(settlement.getCurrency(), targetCurrency, settlementDate);
+            BigDecimal convertedSettlement = settlement.getAmount().multiply(rate).setScale(2, java.math.RoundingMode.HALF_UP);
             balances.merge(settlement.getPayer().getId(),
-                    settlement.getAmount(), BigDecimal::add);
+                    convertedSettlement, BigDecimal::add);
             balances.merge(settlement.getPayee().getId(),
-                    settlement.getAmount().negate(), BigDecimal::add);
+                    convertedSettlement.negate(), BigDecimal::add);
         }
 
         return balances;

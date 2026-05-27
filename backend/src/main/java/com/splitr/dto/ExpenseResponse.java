@@ -15,6 +15,8 @@ public record ExpenseResponse(
         String description,
         BigDecimal amount,
         String currency,
+        String userCurrency,
+        BigDecimal exchangeRateToUserCurrency,
         ExpenseCategory category,
         LocalDate expenseDate,
         SplitType splitType,

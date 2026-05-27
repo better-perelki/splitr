@@ -9,14 +9,13 @@ const currencies = [
   { value: 'EUR', label: 'EUR - Euro (\u20ac)' },
   { value: 'GBP', label: 'GBP - British Pound (\u00a3)' },
   { value: 'PLN', label: 'PLN - Polish Zloty (z\u0142)' },
+  { value: 'CZK', label: 'CZK - Czech Koruna (K\u010d)' },
+  { value: 'NOK', label: 'NOK - Norwegian Krone (kr)' },
+  { value: 'SEK', label: 'SEK - Swedish Krona (kr)' },
+  { value: 'CHF', label: 'CHF - Swiss Franc (CHF)' },
 ]
 
-const timezones = [
-  { value: 'America/Los_Angeles', label: 'Pacific Standard Time (UTC-8)' },
-  { value: 'America/New_York', label: 'Eastern Standard Time (UTC-5)' },
-  { value: 'Europe/London', label: 'Greenwich Mean Time (UTC+0)' },
-  { value: 'Europe/Warsaw', label: 'Central European Time (UTC+1)' },
-]
+
 
 export default function ProfilePage() {
   const { user, setUser } = useAuth()
@@ -27,7 +26,6 @@ export default function ProfilePage() {
     email: '',
     phone: '',
     defaultCurrency: 'PLN',
-    timezone: 'Europe/Warsaw',
   })
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -45,7 +43,6 @@ export default function ProfilePage() {
         email: user.email,
         phone: user.phone ?? '',
         defaultCurrency: user.defaultCurrency,
-        timezone: user.timezone,
       })
     }
   }, [user])
@@ -58,7 +55,6 @@ export default function ProfilePage() {
         username: form.username,
         phone: form.phone || null,
         defaultCurrency: form.defaultCurrency,
-        timezone: form.timezone,
       })
       setUser(data)
       setMessage({ type: 'success', text: 'Profile updated!' })
@@ -232,20 +228,6 @@ export default function ProfilePage() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-headline ml-1">
-                  Timezone
-                </label>
-                <select
-                  value={form.timezone}
-                  onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
-                  className="w-full bg-surface-container-low border-none rounded-xl px-5 py-4 focus:ring-2 focus:ring-primary/20 focus:bg-surface-container-high transition-all font-body text-on-surface appearance-none"
-                >
-                  {timezones.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
-              </div>
             </div>
           </section>
 
@@ -257,7 +239,6 @@ export default function ProfilePage() {
                   email: user.email,
                   phone: user.phone ?? '',
                   defaultCurrency: user.defaultCurrency,
-                  timezone: user.timezone,
                 })
                 setMessage(null)
               }}

@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Icon from '../components/Icon'
 import GroupModal from '../components/GroupModal'
 import { groupsApi, type GroupResponse, type GroupCreateRequest, type GroupType } from '../api/groups'
 import { balancesApi, type GroupBalanceResponse } from '../api/balances'
 import { useAuth } from '../contexts/AuthContext'
+import { useWalletSummary } from '../hooks/useWalletSummary'
 
 const TYPE_ICONS: Record<string, string> = {
   TRIP: 'landscape',
@@ -29,6 +30,7 @@ export default function GroupsPage() {
   const [showGroupModal, setShowGroupModal] = useState(false)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<GroupType | 'ALL'>('ALL')
+  const { totalOwed, totalOwe } = useWalletSummary()
 
   useEffect(() => {
     groupsApi.list()
@@ -54,7 +56,6 @@ export default function GroupsPage() {
         id: crypto.randomUUID(),
         name: data.name,
         icon: data.icon ?? null,
-        currency: data.currency,
         type: data.type,
         balance: 0,
       }])
@@ -73,18 +74,6 @@ export default function GroupsPage() {
     const matchesType = filterType === 'ALL' || g.type === filterType
     return matchesSearch && matchesType
   })
-
-  const { totalOwed, totalOwe } = useMemo(() => {
-    let owed = 0
-    let owe = 0
-    for (const [, balance] of allBalances.entries()) {
-      for (const debt of balance.simplifiedDebts) {
-        if (debt.from.id === currentUserId) owe += debt.amount
-        if (debt.to.id === currentUserId) owed += debt.amount
-      }
-    }
-    return { totalOwed: owed, totalOwe: owe }
-  }, [allBalances, currentUserId])
 
   return (
     <div className="p-12 min-h-screen relative overflow-hidden">
@@ -125,7 +114,7 @@ export default function GroupsPage() {
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">You're Owed</p>
-            <p className="text-2xl font-headline font-bold text-primary">+{totalOwed.toFixed(2)}</p>
+            <p className="text-2xl font-headline font-bold text-primary">+{totalOwed.toFixed(2)} <span className="text-sm">{user?.defaultCurrency ?? 'PLN'}</span></p>
           </div>
         </div>
         <div className="glass-card p-5 rounded-2xl flex items-center gap-4">
@@ -134,7 +123,7 @@ export default function GroupsPage() {
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">You Owe</p>
-            <p className="text-2xl font-headline font-bold text-error">-{totalOwe.toFixed(2)}</p>
+            <p className="text-2xl font-headline font-bold text-error">-{totalOwe.toFixed(2)} <span className="text-sm">{user?.defaultCurrency ?? 'PLN'}</span></p>
           </div>
         </div>
       </div>
@@ -197,9 +186,6 @@ export default function GroupsPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-[10px] text-on-surface-variant bg-surface-container-highest px-2 py-1 rounded-lg font-bold">
-                      {group.currency}
-                    </span>
                   </div>
                   <div className="flex justify-between items-end">
                     <div>
@@ -215,7 +201,7 @@ export default function GroupsPage() {
                               : 'text-on-surface'
                         }`}
                       >
-                        {bal > 0.01 ? '+' : ''}{bal.toFixed(2)} {group.currency}
+                        {bal > 0.01 ? '+' : ''}{bal.toFixed(2)} {user?.defaultCurrency ?? 'PLN'}
                       </p>
                     </div>
                     <div

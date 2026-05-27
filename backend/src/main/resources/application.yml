@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/splitr
+    url: jdbc:postgresql://localhost:15432/splitr
     username: splitr
     password: splitr
   jpa:
@@ -31,3 +31,6 @@ app:
     refresh-token-expiration: 604800000
   upload:
     dir: ${UPLOAD_DIR:./uploads}
+  exchange-rates:
+    nbp-base-url: http://api.nbp.pl/api
+    fetch-cron: "0 0 9 * * MON-FRI"

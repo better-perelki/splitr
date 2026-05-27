@@ -208,11 +208,7 @@ export default function GroupDetailPage() {
                                     </div>
                                 )}
                             </div>
-                            <div className="h-8 w-px bg-outline-variant/30" />
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-on-surface-variant text-sm font-medium">Group Currency:</span>
-                                <span className="font-headline text-lg font-bold text-primary">{group.currency}</span>
-                            </div>
+
                         </div>
                     </div>
                     <div className="flex gap-4">
@@ -309,14 +305,16 @@ export default function GroupDetailPage() {
                                             const payerName = item.payers[0]?.user.username ?? 'Unknown'
                                             const userPaid = item.payers.find((p) => p.user.id === currentUserId)?.amount ?? 0
                                             const userOwes = item.splits.find((s) => s.user.id === currentUserId)?.amount ?? 0
-                                            const net = userPaid - userOwes
-                                            const noteType: 'owe' | 'lent' | 'none' = net > 0.001 ? 'lent' : net < -0.001 ? 'owe' : 'none'
+                                            const netOriginal = userPaid - userOwes
+                                            const netUserCurrency = netOriginal * item.exchangeRateToUserCurrency
+                                            const noteType: 'owe' | 'lent' | 'none' = netUserCurrency > 0.001 ? 'lent' : netUserCurrency < -0.001 ? 'owe' : 'none'
                                             const note =
                                                 noteType === 'owe'
-                                                    ? `You owe ${Math.abs(net).toFixed(2)}`
+                                                    ? `You owe ${Math.abs(netUserCurrency).toFixed(2)} ${item.userCurrency}`
                                                     : noteType === 'lent'
-                                                        ? `You lent ${net.toFixed(2)}`
+                                                        ? `You lent ${netUserCurrency.toFixed(2)} ${item.userCurrency}`
                                                         : 'Settled'
+                                            const totalInUserCurrency = item.amount * item.exchangeRateToUserCurrency
                                             return (
                                                 <button
                                                     key={item.id}
@@ -344,8 +342,13 @@ export default function GroupDetailPage() {
                                                     <div className="flex items-center gap-10">
                                                         <div className="text-right">
                                                             <div className="font-headline text-xl font-bold">
-                                                                {item.amount.toFixed(2)}{' '}
-                                                                <span className="text-sm opacity-50">{item.currency}</span>
+                                                                {totalInUserCurrency.toFixed(2)}{' '}
+                                                                <span className="text-sm opacity-50">{item.userCurrency}</span>
+                                                                {item.currency !== item.userCurrency && (
+                                                                    <div className="text-xs font-medium text-on-surface-variant opacity-70">
+                                                                        ({item.amount.toFixed(2)} {item.currency})
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                             <div
                                                                 className={`text-xs font-medium ${
@@ -373,13 +376,12 @@ export default function GroupDetailPage() {
                         <BalancesTab
                             groupId={group.id}
                             currentUserId={currentUserId}
-                            currency={group.currency}
                             onSettled={refreshAll}
                         />
                     )}
 
                     {activeTab === 'analytics' && (
-                        <GroupAnalyticsTab groupId={group.id} currency={group.currency} />
+                        <GroupAnalyticsTab groupId={group.id} />
                     )}
                 </div>
 
@@ -409,7 +411,7 @@ export default function GroupDetailPage() {
                                 <span className={`font-headline text-3xl font-bold ${userBalance < -0.01 ? 'text-error' : 'text-primary'}`}>
                                     {Math.abs(userBalance).toFixed(2)}
                                 </span>
-                                <span className="text-on-surface-variant text-sm font-medium">{group.currency}</span>
+                                <span className="text-on-surface-variant text-sm font-medium">{user?.defaultCurrency ?? 'PLN'}</span>
                             </div>
                         </div>
                         {userBalance < -0.01 && (
@@ -470,8 +472,8 @@ export default function GroupDetailPage() {
                                     Total Spent
                                 </div>
                                 <div className="font-headline font-bold text-lg">
-                                    {expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}{' '}
-                                    <span className="text-xs opacity-50">{group.currency}</span>
+                                    {expenses.reduce((s, e) => s + (e.amount * e.exchangeRateToUserCurrency), 0).toFixed(2)}{' '}
+                                    <span className="text-xs opacity-50">{user?.defaultCurrency ?? 'PLN'}</span>
                                 </div>
                             </div>
                             <div className="p-4 bg-surface-container-low rounded-xl">
@@ -497,7 +499,6 @@ export default function GroupDetailPage() {
                 onClose={closeAddDrawer}
                 groupId={group.id}
                 members={group.members}
-                currency={group.currency}
                 onSaved={() => {
                     refreshAll()
                     closeAddDrawer()
@@ -510,7 +511,6 @@ export default function GroupDetailPage() {
                 onChanged={() => refreshAll()}
                 groupId={group.id}
                 members={group.members}
-                currency={group.currency}
             />
         </div>
     )

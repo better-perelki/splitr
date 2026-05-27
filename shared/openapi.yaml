@@ -787,10 +787,6 @@ components:
           type: string
           maxLength: 3
           minLength: 3
-        timezone:
-          type: string
-          maxLength: 50
-          minLength: 0
     UserProfileResponse:
       type: object
       properties:
@@ -806,8 +802,6 @@ components:
         avatarUrl:
           type: string
         defaultCurrency:
-          type: string
-        timezone:
           type: string
         createdAt:
           type: string

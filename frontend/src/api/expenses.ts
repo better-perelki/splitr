@@ -39,6 +39,8 @@ export interface ExpenseResponse {
     description: string
     amount: number
     currency: string
+    userCurrency: string
+    exchangeRateToUserCurrency: number
     category: ExpenseCategory
     expenseDate: string
     splitType: SplitType
