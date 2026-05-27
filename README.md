@@ -1,120 +1,109 @@
 # Splitr
 
-Full-stack expense-splitting app — monorepo with React frontend and Spring Boot backend.
 
-## Prerequisites
+---
 
-- **Docker** (required for one-command startup)
-- **Node.js** 20+ and **Java** 21+ (only for local development without Docker)
+## Dokumentacja użytkowa
 
-## Quick Start (Docker)
+Splitr pozwala śledzić i rozliczać wspólne wydatki w grupach (np. wakacje, współlokatorzy, wyjścia ze znajomymi).
 
-Run the entire stack with a single command:
+### Główne funkcje
+
+- **Konto użytkownika** - rejestracja, logowanie, edycja profilu (avatar, dane).
+- **Znajomi** - zapraszanie znajomych po e-mailu, akceptowanie/odrzucanie zaproszeń.
+- **Grupy** - tworzenie grup, zapraszanie członków linkiem, zarządzanie składem.
+- **Wydatki** - dodawanie wydatków z dowolnym podziałem (równo / kwoty / procenty), zdjęciami i kategorią.
+- **Wiele walut** - wydatki w różnych walutach przeliczane po aktualnym kursie (kursy aktualizowane automatycznie).
+- **Salda i rozliczenia** - automatyczne wyliczanie kto komu ile jest winien wraz z propozycją minimalnej liczby przelewów.
+- **Portfel** - podsumowanie wszystkich należności i zobowiązań w głównej walucie.
+- **Powiadomienia** - informacje o nowych wydatkach, zaproszeniach do grup i rozliczeniach.
+- **Analityka** - wykresy wydatków per kategoria / osoba / przedział czasowy.
+
+### Jak zacząć korzystać
+
+1. Załóż konto na `http://localhost:5173/signup`.
+2. Dodaj znajomych z poziomu zakładki **Friends**.
+3. Utwórz grupę w zakładce **Groups** i zaproś członków.
+4. Dodawaj wydatki przyciskiem **Add expense** - wybierz kto zapłacił i jak podzielić koszt.
+5. W zakładce **Balances** zobaczysz aktualne salda i sugerowane przelewy do rozliczenia grupy.
+
+Dokumentacja API (Swagger UI): `http://localhost:8080/swagger-ui.html`.
+
+---
+
+## Dokumentacja instalacyjno-konfiguracyjna
+
+### Wymagania
+
+- **Docker** + **Docker Compose** - wystarczą do uruchomienia całości jedną komendą.
+- (Opcjonalnie, do pracy bez Dockera) **Node.js** 20+ oraz **Java** 21+.
+
+### Szybki start (Docker)
+
+W katalogu głównym repozytorium:
 
 ```bash
 docker compose up --build
 ```
 
-This starts **Postgres**, **backend**, and **frontend** together.
-Open `http://localhost:5173` in your browser.
+Komenda uruchamia **Postgres**, **backend** i **frontend**. Po starcie aplikacja jest dostępna pod `http://localhost:5173`.
 
-To run in the background:
+Uruchomienie w tle:
 
 ```bash
 docker compose up --build -d
 ```
 
-Stop everything:
+Zatrzymanie:
 
 ```bash
 docker compose down
 ```
 
-## Local Development
+### Uruchomienie lokalne (bez Dockera)
 
-For faster iteration, run services individually:
-
-### 1. Start the database
+Dla szybszej iteracji w czasie developmentu:
 
 ```bash
+# 1. Baza danych
 docker compose up postgres -d
+
+# 2. Backend
+cd backend && ./gradlew bootRun
+
+# 3. (opcjonalnie) regeneracja klienta API po zmianach w backendzie
+cd scripts && ./generate-api.sh
+
+# 4. Frontend
+cd frontend && npm install && npm run dev
 ```
 
-### 2. Start the backend
+### Porty
 
-```bash
-cd backend
-./gradlew bootRun
-```
-
-API: `http://localhost:8080` | Swagger UI: `http://localhost:8080/swagger-ui.html`
-
-### 3. Generate the API client
-
-```bash
-cd scripts
-./generate-api.sh
-```
-
-Reads `shared/openapi.yaml` and generates a typed client into `frontend/src/api/`.
-
-### 4. Start the frontend
-
-```bash
-cd frontend
-npm run dev
-```
-
-Open `http://localhost:5173` in your browser.
-
-## Project Structure
-
-```
-splitr/
-├── frontend/          # React + TypeScript + Tailwind (Vite)
-├── backend/           # Spring Boot + Java + Gradle
-├── shared/            # OpenAPI spec (single source of truth)
-│   └── openapi.yaml
-├── scripts/
-│   └── generate-api.sh
-├── docker-compose.yml
-└── README.md
-```
-
-## API Contract (Code-First)
-
-The backend auto-generates the OpenAPI spec from controller annotations via Springdoc. The workflow:
-
-1. Write or update a controller in the backend
-2. Run `scripts/generate-api.sh` (requires backend to be running)
-3. The script fetches the spec from `GET /v3/api-docs.yaml`, saves it to `shared/openapi.yaml`, and generates the typed frontend client
-
-## Configuration
-
-| Service  | Port |
+| Usługa   | Port | 
 |----------|------|
 | Frontend | 5173 |
-| Backend  | 8080 |
+| Backend  | 8080 | 
 | Postgres | 5432 |
 
-Database credentials: `splitr` / `splitr` / `splitr` (db / user / password).
+### Zmienne środowiskowe
 
-## Environment Variables
+**Backend**
 
-### Backend
-
-| Variable | Description | Default |
-|----------|-------------|---------|
+| Zmienna | Opis | Domyślnie |
+|---------|------|-----------|
 | `SPRING_DATASOURCE_URL` | JDBC connection string | `jdbc:postgresql://localhost:5432/splitr` |
-| `SPRING_DATASOURCE_USERNAME` | Database user | `splitr` |
-| `SPRING_DATASOURCE_PASSWORD` | Database password | `splitr` |
-| `JWT_SECRET` | HMAC-SHA256 signing key (min 256 bits) | dev-only key (see `application.yml`) |
-| `UPLOAD_DIR` | Directory for uploaded files (avatars) | `./uploads` |
+| `SPRING_DATASOURCE_USERNAME` | Użytkownik bazy | `splitr` |
+| `SPRING_DATASOURCE_PASSWORD` | Hasło bazy | `splitr` |
+| `JWT_SECRET` | Klucz HMAC-SHA256 (min. 256 bit) | klucz developerski z `application.yml` |
+| `UPLOAD_DIR` | Katalog na pliki (avatary) | `./uploads` |
 
-`JWT_SECRET` **must** be overridden in production with a strong random value. The access token expires in 15 minutes, the refresh token in 7 days (configurable via `app.jwt.access-token-expiration` / `app.jwt.refresh-token-expiration` in ms).
+W produkcji `JWT_SECRET` **musi** zostać nadpisany własną, silną wartością. Access token wygasa po 15 minutach, refresh token po 7 dniach (konfigurowalne przez `app.jwt.access-token-expiration` / `app.jwt.refresh-token-expiration`).
 
-### Frontend
+**Frontend**
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VITE_API_BASE_URL` | Backend URL (used only in `.env`) | `http://localhost:8080` |
+| Zmienna | Opis | Domyślnie |
+|---------|------|-----------|
+| `VITE_API_BASE_URL` | URL backendu (plik `.env`) | `http://localhost:8080` |
+
+
